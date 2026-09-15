@@ -1,0 +1,15 @@
+name "Ananya Mehta"
+email "ananya.mehta@example.com"
+
+education
+college "VIT"
+cgpa 9.3
+
+skills
+C++
+Python
+Java
+
+projects
+project "Resume Compiler"
+description "DSL-to-PDF resume generator built with flex and bison"

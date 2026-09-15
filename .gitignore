@@ -1,0 +1,7 @@
+/build/
+/bin/
+*.o
+*.pdf
+*.aux
+*.log
+*.out
