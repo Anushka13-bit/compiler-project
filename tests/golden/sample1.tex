@@ -1,11 +1,11 @@
 \documentclass[11pt]{article}
 \usepackage[margin=0.75in]{geometry}
-\usepackage{enumitem}
-\usepackage{titlesec}
 \pagestyle{empty}
 \setlength{\parindent}{0pt}
-\titleformat{\section}{\large\bfseries}{}{0em}{}[\titlerule]
-\titlespacing{\section}{0pt}{10pt}{6pt}
+\newcommand{\resumesection}[1]{%
+  \vspace{10pt}\noindent{\large\bfseries #1}\\[-6pt]
+  \noindent\rule{\linewidth}{0.6pt}\vspace{4pt}
+}
 \begin{document}
 
 \begin{center}
@@ -13,18 +13,14 @@
     ananya.mehta@example.com
 \end{center}
 
-\section*{Education}
-\begin{itemize}[leftmargin=*, label={}]
-  \item \textbf{VIT} \hfill CGPA: 9.30
-\end{itemize}
+\resumesection{Education}
+\noindent\textbf{VIT} \hfill CGPA: 9.30\\
 
-\section*{Skills}
-C++, Python, Java
+\resumesection{Skills}
+\noindent C++, Python, Java
 
-\section*{Projects}
-\begin{itemize}[leftmargin=*, label={}]
-  \item \textbf{Resume Compiler} \\
-  DSL-to-PDF resume generator built with flex and bison
-\end{itemize}
+\resumesection{Projects}
+\noindent\textbf{Resume Compiler}\\
+\noindent DSL-to-PDF resume generator built with flex and bison\\[4pt]
 
 \end{document}

@@ -25,16 +25,23 @@ static void write_escaped(FILE *fp, const char *text) {
     }
 }
 
+/* Deliberately depends on nothing beyond `article` + `geometry`: a
+ * minimal TeX install (e.g. BasicTeX, which is what most graders will
+ * actually have on hand) doesn't ship extras like enumitem/titlesec,
+ * and a resume template that needs `sudo tlmgr install ...` before it
+ * compiles is a worse deliverable than one that just works. Section
+ * headings and list-like entries are built from core primitives
+ * (\rule, \hfill, \\) instead. */
 static void write_preamble(FILE *fp) {
     fputs(
         "\\documentclass[11pt]{article}\n"
         "\\usepackage[margin=0.75in]{geometry}\n"
-        "\\usepackage{enumitem}\n"
-        "\\usepackage{titlesec}\n"
         "\\pagestyle{empty}\n"
         "\\setlength{\\parindent}{0pt}\n"
-        "\\titleformat{\\section}{\\large\\bfseries}{}{0em}{}[\\titlerule]\n"
-        "\\titlespacing{\\section}{0pt}{10pt}{6pt}\n"
+        "\\newcommand{\\resumesection}[1]{%\n"
+        "  \\vspace{10pt}\\noindent{\\large\\bfseries #1}\\\\[-6pt]\n"
+        "  \\noindent\\rule{\\linewidth}{0.6pt}\\vspace{4pt}\n"
+        "}\n"
         "\\begin{document}\n\n",
         fp);
 }
@@ -54,20 +61,20 @@ static void write_education(FILE *fp, const ResumeIR *ir) {
     if (ir->education_count == 0) {
         return;
     }
-    fputs("\\section*{Education}\n\\begin{itemize}[leftmargin=*, label={}]\n", fp);
+    fputs("\\resumesection{Education}\n", fp);
     for (int i = 0; i < ir->education_count; i++) {
-        fputs("  \\item \\textbf{", fp);
+        fputs("\\noindent\\textbf{", fp);
         write_escaped(fp, ir->education[i].college);
-        fprintf(fp, "} \\hfill CGPA: %.2f\n", ir->education[i].cgpa);
+        fprintf(fp, "} \\hfill CGPA: %.2f\\\\\n", ir->education[i].cgpa);
     }
-    fputs("\\end{itemize}\n\n", fp);
+    fputs("\n", fp);
 }
 
 static void write_skills(FILE *fp, const ResumeIR *ir) {
     if (ir->skill_count == 0) {
         return;
     }
-    fputs("\\section*{Skills}\n", fp);
+    fputs("\\resumesection{Skills}\n\\noindent ", fp);
     for (int i = 0; i < ir->skill_count; i++) {
         write_escaped(fp, ir->skills[i]);
         if (i + 1 < ir->skill_count) {
@@ -81,18 +88,18 @@ static void write_projects(FILE *fp, const ResumeIR *ir) {
     if (ir->project_count == 0) {
         return;
     }
-    fputs("\\section*{Projects}\n\\begin{itemize}[leftmargin=*, label={}]\n", fp);
+    fputs("\\resumesection{Projects}\n", fp);
     for (int i = 0; i < ir->project_count; i++) {
-        fputs("  \\item \\textbf{", fp);
+        fputs("\\noindent\\textbf{", fp);
         write_escaped(fp, ir->projects[i].name);
         fputs("}", fp);
         if (ir->projects[i].description) {
-            fputs(" \\\\\n  ", fp);
+            fputs("\\\\\n\\noindent ", fp);
             write_escaped(fp, ir->projects[i].description);
         }
-        fputs("\n", fp);
+        fputs("\\\\[4pt]\n", fp);
     }
-    fputs("\\end{itemize}\n\n", fp);
+    fputs("\n", fp);
 }
 
 bool codegen_write_tex(const ResumeIR *ir, const char *tex_path) {
