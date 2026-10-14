@@ -12,7 +12,7 @@ BUILD_DIR = build
 BIN_DIR   = bin
 BIN       = $(BIN_DIR)/resumec
 
-C_SOURCES = ast.c diagnostics.c semantic.c codegen.c build.c main.c
+C_SOURCES = ast.c diagnostics.c semantic.c codegen.c build.c interactive.c main.c
 OBJECTS   = $(C_SOURCES:%.c=$(BUILD_DIR)/%.o) $(BUILD_DIR)/lexer.o $(BUILD_DIR)/parser.tab.o
 
 .PHONY: all clean test

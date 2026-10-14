@@ -3,11 +3,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "ast.h"
 #include "build.h"
 #include "codegen.h"
 #include "diagnostics.h"
+#include "interactive.h"
 #include "parser.tab.h"
 #include "semantic.h"
 
@@ -16,16 +18,17 @@ extern Resume *g_resume;
 
 static void print_usage(const char *prog) {
     fprintf(stderr,
-            "usage: %s <input.resume> [-o <output.pdf>] [options]\n\n"
+            "usage: %s [<input.resume> | -] [-o <output.pdf>] [options]\n"
+            "       %s -i | --interactive\n\n"
             "options:\n"
+            "  -i, --interactive     run interactive resume builder wizard\n"
             "  -o, --output <path>   output PDF path (default: <input basename>.pdf)\n"
             "      --keep-tex        keep the generated .tex file\n"
             "      --tex-only        stop after code generation; skip pdflatex\n"
             "      --cgpa-scale <N>  valid CGPA scale, 10 or 4 (default: 10)\n"
-            "      --dump-ast        print the parsed AST and exit (skips semantic "
-            "analysis)\n"
+            "      --dump-ast        print the parsed AST and exit (skips semantic analysis)\n"
             "  -h, --help            show this help\n",
-            prog);
+            prog, prog);
 }
 
 static char *replace_extension(const char *path, const char *new_ext) {
@@ -48,10 +51,12 @@ int main(int argc, char **argv) {
     bool keep_tex = false;
     bool tex_only = false;
     bool dump_ast = false;
+    bool interactive = false;
     double cgpa_scale = 10.0;
 
     static struct option long_options[] = {
         {"output", required_argument, 0, 'o'},
+        {"interactive", no_argument, 0, 'i'},
         {"keep-tex", no_argument, 0, 1},
         {"tex-only", no_argument, 0, 2},
         {"cgpa-scale", required_argument, 0, 3},
@@ -61,10 +66,13 @@ int main(int argc, char **argv) {
     };
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "o:h", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "o:hi", long_options, NULL)) != -1) {
         switch (opt) {
             case 'o':
                 output_pdf = optarg;
+                break;
+            case 'i':
+                interactive = true;
                 break;
             case 1:
                 keep_tex = true;
@@ -93,28 +101,63 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (optind >= argc) {
-        fprintf(stderr, "error: missing input file\n\n");
-        print_usage(argv[0]);
-        return 1;
-    }
-    const char *input_path = argv[optind];
+    char *wizard_resume = NULL;
+    char *wizard_pdf = NULL;
+    const char *input_path = NULL;
 
-    yyin = fopen(input_path, "r");
-    if (!yyin) {
-        fprintf(stderr, "error: could not open input file '%s'\n", input_path);
-        return 1;
+    if (interactive) {
+        if (!run_interactive_wizard(&wizard_resume, &wizard_pdf)) {
+            return 1;
+        }
+        input_path = wizard_resume;
+        if (!output_pdf) {
+            output_pdf = wizard_pdf;
+        }
+    } else if (optind < argc) {
+        input_path = argv[optind];
+    } else {
+        if (isatty(STDIN_FILENO)) {
+            if (!run_interactive_wizard(&wizard_resume, &wizard_pdf)) {
+                return 1;
+            }
+            input_path = wizard_resume;
+            if (!output_pdf) {
+                output_pdf = wizard_pdf;
+            }
+        } else {
+            fprintf(stderr, "error: missing input file\n\n");
+            print_usage(argv[0]);
+            return 1;
+        }
+    }
+
+    if (strcmp(input_path, "-") == 0) {
+        yyin = stdin;
+    } else {
+        yyin = fopen(input_path, "r");
+        if (!yyin) {
+            fprintf(stderr, "error: could not open input file '%s'\n", input_path);
+            free(wizard_resume);
+            free(wizard_pdf);
+            return 1;
+        }
     }
 
     char *default_output = NULL;
     if (!output_pdf) {
-        default_output = replace_extension(input_path, ".pdf");
+        if (strcmp(input_path, "-") == 0) {
+            default_output = strdup("resume.pdf");
+        } else {
+            default_output = replace_extension(input_path, ".pdf");
+        }
         output_pdf = default_output;
     }
 
     g_resume = resume_new();
     yyparse();
-    fclose(yyin);
+    if (yyin != stdin) {
+        fclose(yyin);
+    }
 
     if (dump_ast) {
         if (diag_count() > 0) {
@@ -125,6 +168,8 @@ int main(int argc, char **argv) {
         resume_free(g_resume);
         diag_reset();
         free(default_output);
+        free(wizard_resume);
+        free(wizard_pdf);
         return status;
     }
 
@@ -137,6 +182,8 @@ int main(int argc, char **argv) {
         resume_free(g_resume);
         diag_reset();
         free(default_output);
+        free(wizard_resume);
+        free(wizard_pdf);
         return 1;
     }
 
@@ -146,6 +193,8 @@ int main(int argc, char **argv) {
         resume_free(g_resume);
         free(tex_path);
         free(default_output);
+        free(wizard_resume);
+        free(wizard_pdf);
         return 1;
     }
     resume_free(g_resume);
@@ -155,6 +204,8 @@ int main(int argc, char **argv) {
         printf("wrote %s\n", tex_path);
         free(tex_path);
         free(default_output);
+        free(wizard_resume);
+        free(wizard_pdf);
         return 0;
     }
 
@@ -170,5 +221,7 @@ int main(int argc, char **argv) {
         printf("wrote %s\n", output_pdf);
     }
     free(default_output);
+    free(wizard_resume);
+    free(wizard_pdf);
     return ok ? 0 : 1;
 }

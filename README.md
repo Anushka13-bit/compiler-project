@@ -132,10 +132,15 @@ GRAMMAR.md           tokens + EBNF
 ## Usage
 
 ```
-./bin/resumec <input.resume> [-o <output.pdf>] [options]
+./bin/resumec [<input.resume> | -] [-o <output.pdf>] [options]
+./bin/resumec -i | --interactive
 ```
 
 ```bash
+# Interactive wizard mode (prompts for name, education, skills, projects)
+./bin/resumec -i
+
+# Standard compilation with specified files
 ./bin/resumec examples/ananya.resume -o ananya.pdf
 ./bin/resumec examples/ananya.resume --tex-only -o ananya.pdf
 ./bin/resumec examples/ananya.resume --dump-ast
