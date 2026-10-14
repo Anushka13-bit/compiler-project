@@ -1,12 +1,3 @@
-/*
- * CLI entry point. Wires the six phases together:
- *
- *   lex+parse (flex/bison) -> semantic analysis -> IR lowering
- *   -> codegen (.tex) -> [build.c: pdflatex -> .pdf]
- *
- * main.c owns g_resume's lifetime and is the only place that decides
- * whether accumulated diagnostics should halt the pipeline.
- */
 #include <getopt.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -17,7 +8,6 @@
 #include "build.h"
 #include "codegen.h"
 #include "diagnostics.h"
-#include "ir.h"
 #include "parser.tab.h"
 #include "semantic.h"
 
@@ -38,8 +28,6 @@ static void print_usage(const char *prog) {
             prog);
 }
 
-/* Swaps the extension of `path` for `new_ext` (which must include the
- * leading '.'). Caller owns the returned buffer. */
 static char *replace_extension(const char *path, const char *new_ext) {
     const char *dot = strrchr(path, '.');
     const char *slash = strrchr(path, '/');
@@ -63,9 +51,12 @@ int main(int argc, char **argv) {
     double cgpa_scale = 10.0;
 
     static struct option long_options[] = {
-        {"output", required_argument, 0, 'o'}, {"keep-tex", no_argument, 0, 1},
-        {"tex-only", no_argument, 0, 2},       {"cgpa-scale", required_argument, 0, 3},
-        {"dump-ast", no_argument, 0, 4},       {"help", no_argument, 0, 'h'},
+        {"output", required_argument, 0, 'o'},
+        {"keep-tex", no_argument, 0, 1},
+        {"tex-only", no_argument, 0, 2},
+        {"cgpa-scale", required_argument, 0, 3},
+        {"dump-ast", no_argument, 0, 4},
+        {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0},
     };
 
@@ -121,7 +112,6 @@ int main(int argc, char **argv) {
         output_pdf = default_output;
     }
 
-    /* -- phase 1+2: lex + parse -------------------------------------- */
     g_resume = resume_new();
     yyparse();
     fclose(yyin);
@@ -138,7 +128,6 @@ int main(int argc, char **argv) {
         return status;
     }
 
-    /* -- phase 3: semantic analysis ------------------------------------ */
     semantic_analyze(g_resume, cgpa_scale);
 
     if (diag_count() > 0) {
@@ -151,21 +140,16 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    /* -- phase 4: IR generation -------------------------------------- */
-    ResumeIR *ir = ir_lower(g_resume);
-    resume_free(g_resume);
-    diag_reset();
-
-    /* -- phase 5: code generation -------------------------------------- */
     char *tex_path = replace_extension(output_pdf, ".tex");
-    if (!codegen_write_tex(ir, tex_path)) {
+    if (!codegen_write_tex(g_resume, tex_path)) {
         fprintf(stderr, "error: could not write '%s'\n", tex_path);
-        ir_free(ir);
+        resume_free(g_resume);
         free(tex_path);
         free(default_output);
         return 1;
     }
-    ir_free(ir);
+    resume_free(g_resume);
+    diag_reset();
 
     if (tex_only) {
         printf("wrote %s\n", tex_path);
@@ -174,7 +158,6 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    /* -- phase 6 (outside the compiler core): pdflatex ------------------ */
     BuildOptions build_opts = {
         .tex_path = tex_path,
         .output_pdf = output_pdf,

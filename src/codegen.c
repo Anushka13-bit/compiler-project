@@ -2,11 +2,6 @@
 
 #include <stdio.h>
 
-/* Writes `text` to fp with LaTeX's special characters escaped, so that
- * user-provided strings (project names, skill names like "C++", etc.)
- * can never break the surrounding document or -- worse -- inject
- * arbitrary LaTeX. Anything not explicitly listed here passes through
- * unchanged. */
 static void write_escaped(FILE *fp, const char *text) {
     for (const char *p = text; *p; p++) {
         switch (*p) {
@@ -25,14 +20,12 @@ static void write_escaped(FILE *fp, const char *text) {
     }
 }
 
-/* Deliberately depends on nothing beyond `article` + `geometry`: a
- * minimal TeX install (e.g. BasicTeX, which is what most graders will
- * actually have on hand) doesn't ship extras like enumitem/titlesec,
- * and a resume template that needs `sudo tlmgr install ...` before it
- * compiles is a worse deliverable than one that just works. Section
- * headings and list-like entries are built from core primitives
- * (\rule, \hfill, \\) instead. */
-static void write_preamble(FILE *fp) {
+bool codegen_write_tex(const Resume *r, const char *tex_path) {
+    FILE *fp = fopen(tex_path, "w");
+    if (!fp) {
+        return false;
+    }
+
     fputs(
         "\\documentclass[11pt]{article}\n"
         "\\usepackage[margin=0.75in]{geometry}\n"
@@ -44,75 +37,51 @@ static void write_preamble(FILE *fp) {
         "}\n"
         "\\begin{document}\n\n",
         fp);
-}
 
-static void write_header(FILE *fp, const ResumeIR *ir) {
     fputs("\\begin{center}\n    {\\Huge \\textbf{", fp);
-    write_escaped(fp, ir->name);
+    write_escaped(fp, r->name);
     fputs("}}", fp);
-    if (ir->email) {
+    if (r->email) {
         fputs(" \\\\[4pt]\n    ", fp);
-        write_escaped(fp, ir->email);
+        write_escaped(fp, r->email);
     }
     fputs("\n\\end{center}\n\n", fp);
-}
 
-static void write_education(FILE *fp, const ResumeIR *ir) {
-    if (ir->education_count == 0) {
-        return;
-    }
-    fputs("\\resumesection{Education}\n", fp);
-    for (int i = 0; i < ir->education_count; i++) {
-        fputs("\\noindent\\textbf{", fp);
-        write_escaped(fp, ir->education[i].college);
-        fprintf(fp, "} \\hfill CGPA: %.2f\\\\\n", ir->education[i].cgpa);
-    }
-    fputs("\n", fp);
-}
-
-static void write_skills(FILE *fp, const ResumeIR *ir) {
-    if (ir->skill_count == 0) {
-        return;
-    }
-    fputs("\\resumesection{Skills}\n\\noindent ", fp);
-    for (int i = 0; i < ir->skill_count; i++) {
-        write_escaped(fp, ir->skills[i]);
-        if (i + 1 < ir->skill_count) {
-            fputs(", ", fp);
+    if (r->edu_count > 0) {
+        fputs("\\resumesection{Education}\n", fp);
+        for (int i = 0; i < r->edu_count; i++) {
+            fputs("\\noindent\\textbf{", fp);
+            write_escaped(fp, r->edu_entries[i].college);
+            fprintf(fp, "} \\hfill CGPA: %.2f\\\\\n", r->edu_entries[i].cgpa);
         }
+        fputs("\n", fp);
     }
-    fputs("\n\n", fp);
-}
 
-static void write_projects(FILE *fp, const ResumeIR *ir) {
-    if (ir->project_count == 0) {
-        return;
-    }
-    fputs("\\resumesection{Projects}\n", fp);
-    for (int i = 0; i < ir->project_count; i++) {
-        fputs("\\noindent\\textbf{", fp);
-        write_escaped(fp, ir->projects[i].name);
-        fputs("}", fp);
-        if (ir->projects[i].description) {
-            fputs("\\\\\n\\noindent ", fp);
-            write_escaped(fp, ir->projects[i].description);
+    if (r->skill_count > 0) {
+        fputs("\\resumesection{Skills}\n\\noindent ", fp);
+        for (int i = 0; i < r->skill_count; i++) {
+            write_escaped(fp, r->skills[i].text);
+            if (i + 1 < r->skill_count) {
+                fputs(", ", fp);
+            }
         }
-        fputs("\\\\[4pt]\n", fp);
-    }
-    fputs("\n", fp);
-}
-
-bool codegen_write_tex(const ResumeIR *ir, const char *tex_path) {
-    FILE *fp = fopen(tex_path, "w");
-    if (!fp) {
-        return false;
+        fputs("\n\n", fp);
     }
 
-    write_preamble(fp);
-    write_header(fp, ir);
-    write_education(fp, ir);
-    write_skills(fp, ir);
-    write_projects(fp, ir);
+    if (r->project_count > 0) {
+        fputs("\\resumesection{Projects}\n", fp);
+        for (int i = 0; i < r->project_count; i++) {
+            fputs("\\noindent\\textbf{", fp);
+            write_escaped(fp, r->projects[i].name);
+            fputs("}", fp);
+            if (r->projects[i].description) {
+                fputs("\\\\\n\\noindent ", fp);
+                write_escaped(fp, r->projects[i].description);
+            }
+            fputs("\\\\[4pt]\n", fp);
+        }
+        fputs("\n", fp);
+    }
 
     fputs("\\end{document}\n", fp);
     fclose(fp);

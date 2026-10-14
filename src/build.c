@@ -7,9 +7,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-/* Absolute fallbacks to try if plain "pdflatex" isn't on $PATH -- covers
- * the common macOS LaTeX distributions (MacTeX/BasicTeX install here,
- * keg-only Homebrew LaTeX formulae symlink here too). */
 static const char *PDFLATEX_FALLBACKS[] = {
     "/Library/TeX/texbin/pdflatex",
     "/usr/local/texlive/2025/bin/universal-darwin/pdflatex",
@@ -17,20 +14,22 @@ static const char *PDFLATEX_FALLBACKS[] = {
     "/opt/homebrew/bin/pdflatex",
     "/usr/local/bin/pdflatex",
 };
-#define PDFLATEX_FALLBACK_COUNT (int)(sizeof(PDFLATEX_FALLBACKS) / sizeof(PDFLATEX_FALLBACKS[0]))
 
 static void split_dir_and_jobname(const char *tex_path, char *dir, size_t dir_size, char *jobname,
-                                   size_t jobname_size) {
+                                  size_t jobname_size) {
     const char *slash = strrchr(tex_path, '/');
     const char *base = slash ? slash + 1 : tex_path;
 
     if (slash) {
         size_t len = (size_t)(slash - tex_path);
-        if (len >= dir_size) len = dir_size - 1;
+        if (len >= dir_size) {
+            len = dir_size - 1;
+        }
         memcpy(dir, tex_path, len);
         dir[len] = '\0';
     } else {
         strncpy(dir, ".", dir_size);
+        dir[dir_size - 1] = '\0';
     }
 
     strncpy(jobname, base, jobname_size - 1);
@@ -41,10 +40,6 @@ static void split_dir_and_jobname(const char *tex_path, char *dir, size_t dir_si
     }
 }
 
-/* Runs pdflatex once. Returns the child's exit status via *exit_code.
- * Returns true if pdflatex was found and executed (regardless of
- * whether the LaTeX compilation itself succeeded), false if no
- * pdflatex binary could be found at all. */
 static bool run_pdflatex(const char *tex_path, const char *dir) {
     pid_t pid = fork();
     if (pid < 0) {
@@ -53,9 +48,6 @@ static bool run_pdflatex(const char *tex_path, const char *dir) {
     }
 
     if (pid == 0) {
-        /* Child: pdflatex writes its own <jobname>.log in -output-directory,
-         * which is what we actually parse for errors -- so it's enough to
-         * throw the noisy stdout/stderr chatter away here. */
         int devnull = open("/dev/null", O_WRONLY);
         if (devnull >= 0) {
             dup2(devnull, STDOUT_FILENO);
@@ -63,21 +55,24 @@ static bool run_pdflatex(const char *tex_path, const char *dir) {
             close(devnull);
         }
 
-        char *argv[] = {(char *)"pdflatex", (char *)"-interaction=nonstopmode",
-                         (char *)"-halt-on-error", (char *)"-output-directory", (char *)dir,
-                         (char *)tex_path, NULL};
+        char *argv[] = {(char *)"pdflatex",
+                        (char *)"-interaction=nonstopmode",
+                        (char *)"-halt-on-error",
+                        (char *)"-output-directory",
+                        (char *)dir,
+                        (char *)tex_path,
+                        NULL};
 
         execvp("pdflatex", argv);
-        for (int i = 0; i < PDFLATEX_FALLBACK_COUNT; i++) {
+        for (size_t i = 0; i < sizeof(PDFLATEX_FALLBACKS) / sizeof(PDFLATEX_FALLBACKS[0]); i++) {
             argv[0] = (char *)PDFLATEX_FALLBACKS[i];
             execv(PDFLATEX_FALLBACKS[i], argv);
         }
-        _exit(127); /* sentinel: pdflatex could not be found anywhere */
+        _exit(127);
     }
 
     int status = 0;
     waitpid(pid, &status, 0);
-
     if (WIFEXITED(status) && WEXITSTATUS(status) == 127) {
         fprintf(stderr,
                 "error: pdflatex not found. Install a LaTeX distribution (e.g. `brew install "
@@ -87,8 +82,6 @@ static bool run_pdflatex(const char *tex_path, const char *dir) {
     return true;
 }
 
-/* Scans a pdflatex .log file for the first line starting with "! " and
- * prints it, instead of dumping the whole (often huge) log. */
 static void report_first_latex_error(const char *log_path) {
     FILE *fp = fopen(log_path, "r");
     if (!fp) {
@@ -112,12 +105,6 @@ static void report_first_latex_error(const char *log_path) {
     fprintf(stderr, "error: LaTeX compilation failed (see pdflatex output for details)\n");
 }
 
-static void remove_if_exists(const char *path) {
-    /* Best-effort cleanup; a missing aux file (e.g. build failed before
-     * pdflatex wrote one) is not itself an error. */
-    unlink(path);
-}
-
 static bool move_file(const char *from, const char *to) {
     if (strcmp(from, to) == 0) {
         return true;
@@ -125,9 +112,11 @@ static bool move_file(const char *from, const char *to) {
     if (rename(from, to) == 0) {
         return true;
     }
-    /* rename() fails across filesystems -- fall back to copy+delete. */
+
     FILE *src = fopen(from, "rb");
-    if (!src) return false;
+    if (!src) {
+        return false;
+    }
     FILE *dst = fopen(to, "wb");
     if (!dst) {
         fclose(src);
@@ -145,8 +134,7 @@ static bool move_file(const char *from, const char *to) {
 }
 
 bool build_pdf(const BuildOptions *opts) {
-    char dir[1024];
-    char jobname[512];
+    char dir[1024], jobname[512];
     split_dir_and_jobname(opts->tex_path, dir, sizeof(dir), jobname, sizeof(jobname));
 
     char aux_path[1152], log_path[1152], out_path[1152], pdf_path[1152];
@@ -155,31 +143,27 @@ bool build_pdf(const BuildOptions *opts) {
     snprintf(out_path, sizeof(out_path), "%s/%s.out", dir, jobname);
     snprintf(pdf_path, sizeof(pdf_path), "%s/%s.pdf", dir, jobname);
 
-    bool found = run_pdflatex(opts->tex_path, dir);
-    if (!found) {
+    if (!run_pdflatex(opts->tex_path, dir)) {
         return false;
     }
 
     FILE *pdf_check = fopen(pdf_path, "rb");
-    bool pdf_exists = pdf_check != NULL;
-    if (pdf_check) fclose(pdf_check);
-
-    if (!pdf_exists) {
+    if (!pdf_check) {
         report_first_latex_error(log_path);
-        remove_if_exists(aux_path);
-        remove_if_exists(log_path);
-        remove_if_exists(out_path);
+        unlink(aux_path);
+        unlink(log_path);
+        unlink(out_path);
         return false;
     }
+    fclose(pdf_check);
 
     bool moved = move_file(pdf_path, opts->output_pdf);
-    remove_if_exists(aux_path);
-    remove_if_exists(log_path);
-    remove_if_exists(out_path);
+    unlink(aux_path);
+    unlink(log_path);
+    unlink(out_path);
     if (!opts->keep_tex) {
-        remove_if_exists(opts->tex_path);
+        unlink(opts->tex_path);
     }
-
     if (!moved) {
         fprintf(stderr, "error: could not move generated PDF to '%s'\n", opts->output_pdf);
         return false;

@@ -1,11 +1,8 @@
-# resumec -- a DSL-to-PDF resume compiler
+# resumec
 
-A small compiler, written in C with flex and bison, that translates a
-custom resume-description DSL into a professionally formatted PDF. It
-follows the standard compiler phases -- lexical analysis, parsing,
-semantic analysis, IR generation, and code generation (to LaTeX) --
-with `pdflatex` invoked as a separate build step to turn that LaTeX
-into a PDF.
+A compiler, written in C, that turns a small resume description language into a formatted PDF.
+
+You write a `.resume` file. The compiler lexes it, parses it into an AST, checks semantic rules, emits LaTeX, and runs `pdflatex`. The point of the project is that compiler pipeline — not a GUI resume builder.
 
 ```
 name "Ananya Mehta"
@@ -26,245 +23,121 @@ description "DSL-to-PDF resume generator built with flex and bison"
 ```
 
 ```bash
+make
 ./bin/resumec examples/ananya.resume -o ananya.pdf
 ```
 
-## Quick start
+## What we use to build it
+
+| Tool | Role |
+|---|---|
+| **C11 compiler** (`gcc` or `clang`) | Compiles `src/*.c` plus the C that flex/bison generate |
+| **flex** | Generates the lexer from `src/lexer.l` → `build/lexer.c` |
+| **bison** | Generates the parser from `src/parser.y` → `build/parser.tab.c` and `parser.tab.h` |
+| **make** | Runs those tools in order and links `bin/resumec` |
+| **pdflatex** | Turns the generated `.tex` into a PDF (not needed for `--tex-only`) |
+
+macOS ships bison 2.3, which cannot parse `%define parse.error verbose`. The Makefile prefers Homebrew bison if it exists:
+
+- `/opt/homebrew/opt/bison/bin/bison` (Apple Silicon)
+- `/usr/local/opt/bison/bin/bison` (Intel Homebrew)
 
 ```bash
-git clone https://github.com/Anushka13-bit/compiler-project.git
-cd compiler-project
-make            # builds bin/resumec
-make test       # runs the test suite
-./bin/resumec examples/ananya.resume -o ananya.pdf
+brew install flex bison          # scanner/parser generators
+brew install --cask basictex     # pdflatex (optional, for PDF output)
+make                             # bin/resumec
+make test                        # golden .tex + semantic error cases
 ```
 
-See [Building](#building) below if `make` fails -- the only real
-prerequisite beyond a C compiler is a reasonably modern `bison`.
+On Linux, distro `flex`, `bison`, `gcc`, and `texlive-latex-base` are enough.
 
-## The DSL
+Generated files live under `build/` (flex/bison C and object files) and `bin/` (the compiler). Both are gitignored.
 
-A `.resume` file is a sequence of declarations, in any order:
+## Idea
 
-- `name "..."` -- required exactly once.
-- `email "..."` -- optional, at most once. Must look like an email address.
-- `education` followed by one or more `college "..." cgpa N` entries.
-  CGPA must fall within `[0, 10]` by default, or `[0, 4]` with
-  `--cgpa-scale 4`.
-- `skills` followed by one or more bare identifiers (`C++`, `Python`,
-  `Node.js`, ...). No two skills may be the same, case-insensitively.
-- `projects` followed by one or more `project "..."` entries, each with
-  an optional `description "..."`.
-- `# comment text` -- a line comment, runs to end of line.
+A resume is a regular structure: name, optional email, education rows, a skill list, projects. That maps cleanly onto a grammar. Using a compiler instead of string templates means:
 
-The full grammar is in [`GRAMMAR.md`](GRAMMAR.md), including the one
-deliberate way this project's grammar differs from a strict reading of
-`name_decl email_decl? section*`: `name` and `email` may appear
-anywhere among the sections, not just first, which is what lets a file
-with no `name` at all still be *parsed* successfully so that "a resume
-needs a name" is reported as a semantic diagnostic alongside the CGPA/
-email/duplicate-skill checks, instead of as a hard syntax error.
+- illegal files are rejected with line/column diagnostics
+- several errors can be reported in one run
+- user text is escaped before it is written into LaTeX
+- the PDF layout is one code-generation pass, not hand-edited TeX
 
-## How the pipeline fits together
+Declarations may appear in any order. A missing `name` is therefore a **semantic** error (same family as bad CGPA or duplicate skills), not a parse failure. Duplicate `name` / `email` is caught in the parser while the tree is being built.
 
-Six phases, each its own translation unit under `src/`:
+The full token list and EBNF are in [`GRAMMAR.md`](GRAMMAR.md).
 
-| Phase | File(s) | Input -> Output |
-|---|---|---|
-| 1. Lexical analysis | `lexer.l` (flex) | source text -> token stream |
-| 2. Parsing | `parser.y` (bison) | tokens -> `Resume` AST (`ast.h`) |
-| 3. Semantic analysis | `semantic.c` | AST -> diagnostics (name/CGPA/email/duplicate-skill checks) |
-| 4. IR generation | `ir.c` | validated AST -> `ResumeIR` (`ir.h`) |
-| 5. Code generation | `codegen.c` | IR -> a complete `.tex` file |
-| 6. Build (outside the compiler core) | `build.c` | `.tex` -> `pdflatex` subprocess -> `.pdf` |
-
-`diagnostics.c` is shared by phases 1-3: the lexer, parser, and
-semantic analyzer all *record* problems there rather than printing or
-aborting immediately, so a single run can report several unrelated
-errors. `main.c` checks for error-level diagnostics after semantic
-analysis and halts before IR generation if any exist.
-
-`codegen.c` depends only on `ir.h`, never on `ast.h` -- so IR lowering
-is a real, separate step, not just parser output being handed straight
-to code generation under a different name. `build.c` is explicitly
-outside that pipeline: nothing in phases 1-5 calls it or knows it
-exists; only `main.c` invokes it, and only when `--tex-only` wasn't
-passed.
-
-User-provided text (names, project descriptions, skill names, ...) is
-escaped for LaTeX's special characters (`& % $ # _ { } ~ ^ \`) in
-`codegen.c` before being written out, so input like `C++ & Java` can't
-break the generated document.
-
-## File-by-file guide
+## How the compiler works
 
 ```
-resume-dsl-compiler/
-├── Makefile                  build rules: flex + bison + gcc -> bin/resumec
-├── GRAMMAR.md                 the full EBNF grammar, plus the rationale for
-│                              the one deliberate deviation from the spec
-├── README.md                  this file
-├── .gitignore                 ignores build/, bin/, and generated .pdf/.tex/.aux/.log/.out
-│
-├── src/
-│   ├── lexer.l                flex lexer: keywords, STRING/NUMBER/IDENTIFIER
-│   │                          tokens, comments, per-token line/col tracking
-│   ├── parser.y                bison grammar; each rule's action builds one
-│   │                          piece of the AST. Also where syntax-error
-│   │                          recovery (the `error` token) lives
-│   ├── ast.h / ast.c           the `Resume` AST struct (name, email, education
-│   │                          entries, skills, projects) + resume_debug_print(),
-│   │                          used by `--dump-ast`
-│   ├── semantic.h / semantic.c walks the AST enforcing: name required, CGPA
-│   │                          in range, email format (regex), no duplicate
-│   │                          skills (case-insensitive) -- reports every
-│   │                          violation instead of stopping at the first
-│   ├── ir.h / ir.c             lowers a validated AST into `ResumeIR`, a
-│   │                          simpler struct with no source-position fields;
-│   │                          codegen.c depends only on this, never on ast.h
-│   ├── codegen.h / codegen.c   writes the IR out as a complete .tex file
-│   │                          (a "Jake's Resume"-style single-column layout),
-│   │                          escaping LaTeX special characters as it goes
-│   ├── build.h / build.c       runs `pdflatex` as a subprocess, parses its
-│   │                          log for the first "! " error line on failure,
-│   │                          and cleans up .aux/.log/.out afterward. This
-│   │                          is the one file that is *not* part of the
-│   │                          compiler proper -- it's a build step
-│   ├── diagnostics.h / diagnostics.c  the shared error/warning collector used
-│   │                          by the lexer, parser, and semantic analyzer;
-│   │                          prints everything sorted by line at the end
-│   └── main.c                  CLI argument parsing and the glue that calls
-│                              the six phases in order
-│
-├── tests/
-│   ├── run_tests.sh            the test runner (see Testing below)
-│   ├── invalid_cgpa.resume      negative test: CGPA out of range
-│   ├── invalid_email.resume     negative test: malformed email
-│   ├── duplicate_skill.resume   negative test: same skill listed twice
-│   ├── missing_name.resume      negative test: no `name` declaration
-│   └── golden/
-│       ├── sample1.resume       fixed input for the golden-file test
-│       └── sample1.tex          the exact .tex output sample1.resume must produce
-│
-├── examples/
-│   └── ananya.resume            the sample resume from the project brief
-│
-├── build/    (generated by `make`, git-ignored: flex/bison output + .o files)
-└── bin/      (generated by `make`, git-ignored: the resumec binary)
+.resume  →  lexer  →  parser  →  AST  →  semantic checks  →  .tex  →  pdflatex  →  .pdf
+              flex      bison    ast.c     semantic.c        codegen.c    build.c
 ```
 
-## Building
+`src/main.c` is the only place that sequences these steps.
 
-Requires `flex`, `bison`, and a C11 compiler. macOS ships a very old,
-GPL-frozen bison (2.3) that doesn't understand this project's grammar
-directives; the `Makefile` automatically prefers a Homebrew-installed
-bison (`brew install bison`) if one is present at
-`/opt/homebrew/opt/bison/bin/bison`, falling back to whatever `bison`
-resolves to on `PATH` otherwise. On Linux, the distro's `bison` package
-is almost always new enough already.
+1. **CLI.** Flags: `-o` output PDF, `--keep-tex`, `--tex-only`, `--cgpa-scale 10|4`, `--dump-ast`. Default PDF path is the input basename with `.pdf`.
+2. **Lex + parse.** `yyin` is the input file. `resume_new()` allocates an empty `Resume`. `yyparse()` pulls tokens from `yylex()` and runs grammar actions that fill `g_resume`.
+3. **`--dump-ast`.** Prints the tree and exits. Used to inspect lex/parse without semantic analysis or codegen.
+4. **Semantic analysis.** Walks the AST. If any error was recorded, diagnostics are printed (sorted by line, then column) and the process exits `1` with no `.tex`.
+5. **Code generation.** Writes a self-contained `article` document: preamble, centered header, then Education / Skills / Projects only if those lists are non-empty. `& % $ # _ { } ~ ^ \` in user strings are escaped.
+6. **PDF build.** Unless `--tex-only`, `build.c` forks `pdflatex -interaction=nonstopmode -halt-on-error`, moves the PDF to `-o`, and deletes `.aux` / `.log` / `.out` (and the `.tex` unless `--keep-tex`). If `pdflatex` is missing, the `.tex` is still on disk and the error says so.
 
-```bash
-make          # builds bin/resumec
-make clean    # removes build/ and bin/
-make test     # builds, then runs tests/run_tests.sh
-```
-
-Turning the generated `.tex` into a PDF needs `pdflatex` on your
-`PATH` (or at one of a few common install locations `build.c` checks).
-Any TeX distribution works, e.g.:
-
-```bash
-brew install --cask basictex     # macOS
-sudo apt install texlive-latex-base   # Debian/Ubuntu
-```
-
-If `pdflatex` isn't found, `resumec` still succeeds at producing the
-`.tex` file and prints a clear error explaining what's missing, rather
-than failing silently or crashing.
-
-## Usage
-
-```
-./bin/resumec <input.resume> [-o <output.pdf>] [options]
-
-  -o, --output <path>   output PDF path (default: <input basename>.pdf)
-      --keep-tex         keep the generated .tex file
-      --tex-only         stop after code generation; skip pdflatex
-      --cgpa-scale <N>   valid CGPA scale, 10 or 4 (default: 10)
-      --dump-ast         print the parsed AST and exit
-  -h, --help             show usage
-```
-
-Examples:
-
-```bash
-# full pipeline: produces ananya.pdf
-./bin/resumec examples/ananya.resume -o ananya.pdf
-
-# just the LaTeX, e.g. to inspect or hand-edit before compiling
-./bin/resumec examples/ananya.resume --tex-only -o ananya.pdf
-
-# a 0-4 CGPA scale instead of the 0-10 default
-./bin/resumec examples/ananya.resume --cgpa-scale 4 -o ananya.pdf
-
-# inspect exactly what the lexer + parser produced, independent of
-# semantic analysis / IR / codegen
-./bin/resumec examples/ananya.resume --dump-ast
-```
-
-### Diagnostics
-
-Every error from every phase is collected and printed together, sorted
-by source line, in this format:
+Diagnostics from lexer, parser, and semantic analysis all go through `src/diagnostics.c`. They look like:
 
 ```
 error [line 4, col 1]: CGPA 11.5 out of valid range (0-10)
 error [line 9, col 3]: duplicate skill "Python"
 ```
 
-If any error-level diagnostic survives semantic analysis, the compiler
-halts before generating any LaTeX (exit code 1).
+## Language rules
 
-## Testing
+| Construct | Form | Rules |
+|---|---|---|
+| Name | `name "..."` | Required exactly once |
+| Email | `email "..."` | Optional, at most once; must look like `local@host.tld` |
+| Education | `education` then `college "..." cgpa N` | CGPA in `[0, 10]` (or `[0, 4]` with `--cgpa-scale 4`) |
+| Skills | `skills` then identifiers | `C++`, `Python`, `Node.js`; no case-insensitive duplicates |
+| Projects | `projects` then `project "..."` | Optional `description "..."` |
+| Comments | `# ...` | Rest of line ignored |
+
+## Codebase
+
+```
+src/lexer.l          flex rules: keywords, STRING, NUMBER, IDENTIFIER, comments, line/col
+src/parser.y         bison grammar; actions build the AST; error token for recovery
+src/ast.h, ast.c     Resume tree (name, email, edu entries, skills, projects)
+src/semantic.c       name required, email regex, CGPA range, duplicate skills
+src/codegen.c        AST → complete .tex (Jake's-resume-style single column)
+src/build.c          pdflatex subprocess + cleanup
+src/diagnostics.c    collect / sort / print errors
+src/main.c           CLI and phase order
+Makefile             flex → bison → cc → bin/resumec
+tests/               golden sample1.tex, --dump-ast check, four negative cases, PDF smoke
+examples/            sample .resume file
+GRAMMAR.md           tokens + EBNF
+```
+
+**Lexer.** Keywords are longest-match reserved words. Strings support `\"` and `\\`. An unterminated quote is an error but still yields a `STRING` so the parse can continue. `YY_USER_ACTION` fills bison locations so later errors can point at a column.
+
+**Parser.** `resume := decl*`. Each section list is one-or-more entries. `yyerrok` + `yyclearin` on `error` alternatives skip a bad construct instead of aborting the whole file.
+
+**AST.** Dynamic arrays of `EduEntry`, `Skill`, and `Project`, each storing source line/col for diagnostics. Codegen reads the same tree (there is no separate IR copy).
+
+**Semantic analyzer.** Name non-empty; email optional POSIX regex `^[^@space]+@[^@space]+\.[^@space]+$`; each CGPA in range; each skill compared to earlier skills with `strcasecmp`.
+
+**Codegen.** Depends only on the AST and `stdio`. Preamble uses `article` + `geometry` so a minimal TeX install (BasicTeX) is enough — no `enumitem` / `titlesec`.
+
+**Build.** Tries `pdflatex` on `PATH`, then a few macOS TeX paths. On failure it prints the first `! ` line from the log rather than the whole log.
+
+## Usage
+
+```
+./bin/resumec <input.resume> [-o <output.pdf>] [options]
+```
 
 ```bash
-make test
-```
-
-runs `tests/run_tests.sh`, which covers:
-
-- **Golden-file test**: `--tex-only` output for `tests/golden/sample1.resume`
-  diffed byte-for-byte against `tests/golden/sample1.tex`.
-- **Parser isolation**: `--dump-ast` output checked against the expected
-  AST shape, independent of semantic analysis/IR/codegen.
-- **Negative tests**: one `.resume` file per semantic rule
-  (`invalid_cgpa.resume`, `invalid_email.resume`, `duplicate_skill.resume`,
-  `missing_name.resume`) -- each asserted to exit non-zero with the
-  expected diagnostic substring.
-- **PDF smoke test**: the full pipeline (no `--tex-only`) run on a valid
-  sample, asserting the resulting PDF exists and is non-empty. This step
-  is skipped (clearly labeled, not silently) on a machine with no
-  `pdflatex` installed.
-
-A passing run looks like:
-
-```
-== golden-file test ==
-  PASS: generated .tex byte-for-byte matches tests/golden/sample1.tex
-
-== lexer/parser isolation (--dump-ast) ==
-  PASS: --dump-ast shows the expected AST shape, independent of semantic/IR/codegen
-
-== negative tests (one per semantic rule) ==
-  PASS: bad CGPA: exits non-zero and reports "out of valid range"
-  PASS: malformed email: exits non-zero and reports "invalid email format"
-  PASS: duplicate skill: exits non-zero and reports "duplicate skill"
-  PASS: missing name: exits non-zero and reports "must have a 'name'"
-
-== PDF smoke test ==
-  SKIP: no pdflatex found on this machine -- install a LaTeX distribution
-        (e.g. 'brew install --cask basictex') to exercise this test.
-
--------------------------------------------
-passed: 6   failed: 0
+./bin/resumec examples/ananya.resume -o ananya.pdf
+./bin/resumec examples/ananya.resume --tex-only -o ananya.pdf
+./bin/resumec examples/ananya.resume --dump-ast
+./bin/resumec examples/ananya.resume --cgpa-scale 4 -o ananya.pdf
 ```
