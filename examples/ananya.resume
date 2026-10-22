@@ -1,5 +1,8 @@
 name "Ananya Mehta"
+phone "+91 98765 43210"
 email "ananya.mehta@example.com"
+github "ananya-mehta"
+linkedin "ananya-mehta"
 
 education
 college "VIT"
@@ -12,4 +15,12 @@ Java
 
 projects
 project "Resume Compiler"
-description "DSL-to-PDF resume generator built with flex and bison"
+bullet "DSL-to-PDF resume generator built with flex and bison"
+bullet "Implements full compiler pipeline: lex, parse, AST, semantic checks, codegen"
+
+experience
+company "Google"
+role "Software Engineering Intern"
+duration "May 2024 - Aug 2024"
+bullet "Built internal tooling that reduced CI pipeline latency by 30%"
+bullet "Collaborated with a team of 5 to design a new API surface"

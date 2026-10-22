@@ -1,0 +1,26 @@
+name "anushka"
+phone "9963213609"
+email "anushkagattani@gmail.com"
+github "https://github.com/Anushka13-bit"
+linkedin "https://www.linkedin.com/in/anushka-gattani/"
+
+education
+college "VIT"
+cgpa 7.50
+
+skills
+cpp
+java
+
+projects
+project "compiler"
+bullet "this is my project"
+bullet "yes this is my project"
+
+experience
+company "Madhur CO."
+role "HR managaer"
+duration "Jun 2024-Jun 2025"
+bullet "hbfuher"
+bullet "skdhbfsebl"
+bullet "ajhrcfbskubn l"

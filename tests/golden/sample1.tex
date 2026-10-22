@@ -1,5 +1,6 @@
 \documentclass[11pt]{article}
 \usepackage[margin=0.75in]{geometry}
+\usepackage[hidelinks]{hyperref}
 \pagestyle{empty}
 \setlength{\parindent}{0pt}
 \newcommand{\resumesection}[1]{%
@@ -10,7 +11,7 @@
 
 \begin{center}
     {\Huge \textbf{Ananya Mehta}} \\[4pt]
-    ananya.mehta@example.com
+    \href{mailto:ananya.mehta@example.com}{ananya.mehta@example.com}
 \end{center}
 
 \resumesection{Education}
@@ -20,7 +21,9 @@
 \noindent C++, Python, Java
 
 \resumesection{Projects}
-\noindent\textbf{Resume Compiler}\\
-\noindent DSL-to-PDF resume generator built with flex and bison\\[4pt]
+\noindent\textbf{Resume Compiler}
+\begin{itemize}\setlength{\itemsep}{1pt}\setlength{\parskip}{0pt}
+  \item DSL-to-PDF resume generator built with flex and bison
+\end{itemize}
 
 \end{document}

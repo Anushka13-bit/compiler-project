@@ -26,6 +26,17 @@ static void *grow(void *ptr, int *capacity, int count, size_t elem_size) {
     return grown;
 }
 
+static char **grow_str_array(char **arr, int *capacity, int count) {
+    if (count < *capacity) return arr;
+    *capacity = *capacity == 0 ? 4 : *capacity * 2;
+    char **grown = realloc(arr, (size_t)*capacity * sizeof(char *));
+    if (!grown) {
+        fprintf(stderr, "fatal: out of memory\n");
+        exit(2);
+    }
+    return grown;
+}
+
 void resume_add_edu_entry(Resume *r, const char *college, double cgpa, int line, int col) {
     r->edu_entries = grow(r->edu_entries, &r->edu_capacity, r->edu_count, sizeof(EduEntry));
     r->edu_entries[r->edu_count++] = (EduEntry){strdup(college), cgpa, line, col};
@@ -36,10 +47,43 @@ void resume_add_skill(Resume *r, const char *text, int line, int col) {
     r->skills[r->skill_count++] = (Skill){strdup(text), line, col};
 }
 
-void resume_add_project(Resume *r, const char *name, const char *description, int line, int col) {
+void resume_add_project(Resume *r, const char *name, int line, int col) {
     r->projects = grow(r->projects, &r->project_capacity, r->project_count, sizeof(Project));
-    r->projects[r->project_count++] =
-        (Project){strdup(name), description ? strdup(description) : NULL, line, col};
+    Project *p = &r->projects[r->project_count++];
+    p->name = strdup(name);
+    p->bullets = NULL;
+    p->bullet_count = 0;
+    p->bullet_capacity = 0;
+    p->line = line;
+    p->col = col;
+}
+
+void resume_add_project_bullet(Resume *r, const char *bullet) {
+    if (r->project_count == 0) return; /* safety */
+    Project *p = &r->projects[r->project_count - 1];
+    p->bullets = grow_str_array(p->bullets, &p->bullet_capacity, p->bullet_count);
+    p->bullets[p->bullet_count++] = strdup(bullet);
+}
+
+void resume_add_exp_entry(Resume *r, const char *company, const char *role,
+                          const char *duration, int line, int col) {
+    r->exp_entries = grow(r->exp_entries, &r->exp_capacity, r->exp_count, sizeof(ExpEntry));
+    ExpEntry *e = &r->exp_entries[r->exp_count++];
+    e->company  = strdup(company);
+    e->role     = role     ? strdup(role)     : NULL;
+    e->duration = duration ? strdup(duration) : NULL;
+    e->bullets  = NULL;
+    e->bullet_count = 0;
+    e->bullet_capacity = 0;
+    e->line = line;
+    e->col  = col;
+}
+
+void resume_add_exp_bullet(Resume *r, const char *bullet) {
+    if (r->exp_count == 0) return; /* safety */
+    ExpEntry *e = &r->exp_entries[r->exp_count - 1];
+    e->bullets = grow_str_array(e->bullets, &e->bullet_capacity, e->bullet_count);
+    e->bullets[e->bullet_count++] = strdup(bullet);
 }
 
 void resume_free(Resume *r) {
@@ -48,6 +92,9 @@ void resume_free(Resume *r) {
     }
     free(r->name);
     free(r->email);
+    free(r->phone);
+    free(r->github);
+    free(r->linkedin);
     for (int i = 0; i < r->edu_count; i++) {
         free(r->edu_entries[i].college);
     }
@@ -58,16 +105,32 @@ void resume_free(Resume *r) {
     free(r->skills);
     for (int i = 0; i < r->project_count; i++) {
         free(r->projects[i].name);
-        free(r->projects[i].description);
+        for (int j = 0; j < r->projects[i].bullet_count; j++) {
+            free(r->projects[i].bullets[j]);
+        }
+        free(r->projects[i].bullets);
     }
     free(r->projects);
+    for (int i = 0; i < r->exp_count; i++) {
+        free(r->exp_entries[i].company);
+        free(r->exp_entries[i].role);
+        free(r->exp_entries[i].duration);
+        for (int j = 0; j < r->exp_entries[i].bullet_count; j++) {
+            free(r->exp_entries[i].bullets[j]);
+        }
+        free(r->exp_entries[i].bullets);
+    }
+    free(r->exp_entries);
     free(r);
 }
 
 void resume_debug_print(const Resume *r) {
     printf("Resume:\n");
-    printf("  name=%s\n", r->name ? r->name : "(none)");
-    printf("  email=%s\n", r->email ? r->email : "(none)");
+    printf("  name=%s\n",     r->name     ? r->name     : "(none)");
+    printf("  email=%s\n",    r->email    ? r->email    : "(none)");
+    printf("  phone=%s\n",    r->phone    ? r->phone    : "(none)");
+    printf("  github=%s\n",   r->github   ? r->github   : "(none)");
+    printf("  linkedin=%s\n", r->linkedin ? r->linkedin : "(none)");
 
     printf("  education (%d entries):\n", r->edu_count);
     for (int i = 0; i < r->edu_count; i++) {
@@ -83,8 +146,22 @@ void resume_debug_print(const Resume *r) {
 
     printf("  projects (%d entries):\n", r->project_count);
     for (int i = 0; i < r->project_count; i++) {
-        printf("    - name=%s description=%s [line %d, col %d]\n", r->projects[i].name,
-               r->projects[i].description ? r->projects[i].description : "(none)",
-               r->projects[i].line, r->projects[i].col);
+        printf("    - name=%s [line %d, col %d]\n",
+               r->projects[i].name, r->projects[i].line, r->projects[i].col);
+        for (int j = 0; j < r->projects[i].bullet_count; j++) {
+            printf("      * %s\n", r->projects[i].bullets[j]);
+        }
+    }
+
+    printf("  experience (%d entries):\n", r->exp_count);
+    for (int i = 0; i < r->exp_count; i++) {
+        printf("    - company=%s role=%s duration=%s [line %d, col %d]\n",
+               r->exp_entries[i].company,
+               r->exp_entries[i].role     ? r->exp_entries[i].role     : "(none)",
+               r->exp_entries[i].duration ? r->exp_entries[i].duration : "(none)",
+               r->exp_entries[i].line, r->exp_entries[i].col);
+        for (int j = 0; j < r->exp_entries[i].bullet_count; j++) {
+            printf("      * %s\n", r->exp_entries[i].bullets[j]);
+        }
     }
 }

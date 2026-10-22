@@ -23,13 +23,20 @@ static char *unescape_string(const char *raw, int len);
 
 "name"          { return NAME; }
 "email"         { return EMAIL; }
+"phone"         { return PHONE; }
+"github"        { return GITHUB; }
+"linkedin"      { return LINKEDIN; }
 "education"     { return EDUCATION; }
 "college"       { return COLLEGE; }
 "cgpa"          { return CGPA; }
 "skills"        { return SKILLS; }
 "projects"      { return PROJECTS; }
 "project"       { return PROJECT; }
-"description"   { return DESCRIPTION; }
+"bullet"        { return BULLET; }
+"experience"    { return EXPERIENCE; }
+"company"       { return COMPANY; }
+"role"          { return ROLE; }
+"duration"      { return DURATION; }
 
 \"([^"\n\\]|\\.)*\" {
     yylval.sval = unescape_string(yytext, yyleng);

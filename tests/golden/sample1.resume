@@ -12,4 +12,4 @@ Java
 
 projects
 project "Resume Compiler"
-description "DSL-to-PDF resume generator built with flex and bison"
+bullet "DSL-to-PDF resume generator built with flex and bison"

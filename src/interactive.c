@@ -83,9 +83,13 @@ static void write_escaped_dsl_string(FILE *fp, const char *str) {
     fputc('"', fp);
 }
 
+//create resume.dsl and pdf file
 bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
-    char name[256] = {0};
-    char email[256] = {0};
+    char name[256]     = {0};
+    char email[256]    = {0};
+    char phone[128]    = {0};
+    char github[256]   = {0};
+    char linkedin[256] = {0};
 
     printf("\n=== resumec Interactive Resume Builder ===\n");
     printf("Answer the following questions to create your customized resume.\n\n");
@@ -99,8 +103,11 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
         printf("Name cannot be empty.\n");
     }
 
-    /* 2. Email */
-    read_line("Enter your email address (press Enter to skip): ", email, sizeof(email));
+    /* 2. Contact info */
+    read_line("Phone number (press Enter to skip): ", phone, sizeof(phone));
+    read_line("Email address (press Enter to skip): ", email, sizeof(email));
+    read_line("GitHub username (press Enter to skip): ", github, sizeof(github));
+    read_line("LinkedIn username (press Enter to skip): ", linkedin, sizeof(linkedin));
 
     /* 3. Education */
     typedef struct {
@@ -157,7 +164,8 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
     /* 5. Projects */
     typedef struct {
         char title[256];
-        char desc[512];
+        char bullets[8][512];
+        int bullet_count;
     } ProjectInput;
     ProjectInput projects[16];
     int project_count = 0;
@@ -174,12 +182,62 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
             printf("  Project title cannot be empty.\n");
         }
 
-        read_line("  Description (optional, press Enter to skip): ",
-                  projects[project_count].desc, sizeof(projects[project_count].desc));
+        projects[project_count].bullet_count = 0;
+        printf("  Add bullet points (press Enter with no text to stop):\n");
+        while (projects[project_count].bullet_count < 8) {
+            char bul[512];
+            read_line("    bullet> ", bul, sizeof(bul));
+            if (bul[0] == '\0') break;
+            strncpy(projects[project_count].bullets[projects[project_count].bullet_count],
+                    bul, 511);
+            projects[project_count].bullets[projects[project_count].bullet_count][511] = '\0';
+            projects[project_count].bullet_count++;
+        }
         project_count++;
     }
 
-    /* 6. Output filenames */
+    /* 6. Experience */
+    typedef struct {
+        char company[256];
+        char role[256];
+        char duration[256];
+        char bullets[8][512];
+        int bullet_count;
+    } ExpInput;
+    ExpInput exps[16];
+    int exp_count = 0;
+
+    printf("\n-- Experience Section --\n");
+    while (exp_count < 16) {
+        bool add = ask_yes_no(exp_count == 0 ? "Add an experience entry?" : "Add another experience entry?",
+                              false);
+        if (!add) break;
+
+        while (1) {
+            read_line("  Company name: ", exps[exp_count].company, sizeof(exps[exp_count].company));
+            if (exps[exp_count].company[0] != '\0') break;
+            printf("  Company name cannot be empty.\n");
+        }
+
+        read_line("  Role / Job title (press Enter to skip): ",
+                  exps[exp_count].role, sizeof(exps[exp_count].role));
+        read_line("  Duration (e.g. Jun 2024 - Aug 2024, press Enter to skip): ",
+                  exps[exp_count].duration, sizeof(exps[exp_count].duration));
+
+        exps[exp_count].bullet_count = 0;
+        printf("  Add bullet points (press Enter with no text to stop):\n");
+        while (exps[exp_count].bullet_count < 8) {
+            char bul[512];
+            read_line("    bullet> ", bul, sizeof(bul));
+            if (bul[0] == '\0') break;
+            strncpy(exps[exp_count].bullets[exps[exp_count].bullet_count], bul, 511);
+            exps[exp_count].bullets[exps[exp_count].bullet_count][511] = '\0';
+            exps[exp_count].bullet_count++;
+        }
+        exp_count++;
+    }
+
+    /* 7. Output filenames */
     char safe_base[256];
     make_safe_filename(name, safe_base, sizeof(safe_base));
 
@@ -216,9 +274,27 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
     write_escaped_dsl_string(fp, name);
     fprintf(fp, "\n");
 
+    if (phone[0] != '\0') {
+        fprintf(fp, "phone ");
+        write_escaped_dsl_string(fp, phone);
+        fprintf(fp, "\n");
+    }
+
     if (email[0] != '\0') {
         fprintf(fp, "email ");
         write_escaped_dsl_string(fp, email);
+        fprintf(fp, "\n");
+    }
+
+    if (github[0] != '\0') {
+        fprintf(fp, "github ");
+        write_escaped_dsl_string(fp, github);
+        fprintf(fp, "\n");
+    }
+
+    if (linkedin[0] != '\0') {
+        fprintf(fp, "linkedin ");
+        write_escaped_dsl_string(fp, linkedin);
         fprintf(fp, "\n");
     }
 
@@ -245,9 +321,33 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
             fprintf(fp, "project ");
             write_escaped_dsl_string(fp, projects[i].title);
             fprintf(fp, "\n");
-            if (projects[i].desc[0] != '\0') {
-                fprintf(fp, "description ");
-                write_escaped_dsl_string(fp, projects[i].desc);
+            for (int b = 0; b < projects[i].bullet_count; b++) {
+                fprintf(fp, "bullet ");
+                write_escaped_dsl_string(fp, projects[i].bullets[b]);
+                fprintf(fp, "\n");
+            }
+        }
+    }
+
+    if (exp_count > 0) {
+        fprintf(fp, "\nexperience\n");
+        for (int i = 0; i < exp_count; i++) {
+            fprintf(fp, "company ");
+            write_escaped_dsl_string(fp, exps[i].company);
+            fprintf(fp, "\n");
+            if (exps[i].role[0] != '\0') {
+                fprintf(fp, "role ");
+                write_escaped_dsl_string(fp, exps[i].role);
+                fprintf(fp, "\n");
+            }
+            if (exps[i].duration[0] != '\0') {
+                fprintf(fp, "duration ");
+                write_escaped_dsl_string(fp, exps[i].duration);
+                fprintf(fp, "\n");
+            }
+            for (int b = 0; b < exps[i].bullet_count; b++) {
+                fprintf(fp, "bullet ");
+                write_escaped_dsl_string(fp, exps[i].bullets[b]);
                 fprintf(fp, "\n");
             }
         }

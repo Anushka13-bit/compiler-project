@@ -1,0 +1,16 @@
+name "anushka     gattani"
+email "anushka"
+
+education
+college "VIT"
+cgpa 8.60
+college "jnfak"
+cgpa 676.60
+
+skills
+cpp
+java
+
+projects
+project "Compiler"
+description "jkbaskjcns"
