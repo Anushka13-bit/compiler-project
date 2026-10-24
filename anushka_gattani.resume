@@ -1,16 +1,31 @@
-name "anushka     gattani"
-email "anushka"
+name "Anushka Gattani"
+phone "1234567891"
+email "anushka@gmail.com"
+github "Anushka13-bit"
+linkedin "anushka-gattani"
 
 education
 college "VIT"
 cgpa 8.60
-college "jnfak"
-cgpa 676.60
 
 skills
-cpp
-java
+Python
+Docker
+Java
+C++
 
 projects
-project "Compiler"
-description "jkbaskjcns"
+project "Compiler Project 1"
+bullet "Resume DSL Builder"
+bullet "Automated resume Generator"
+bullet "PDFLatex build"
+project "Operating System Project 1"
+bullet "OS dashboard for forking"
+bullet "Multiple processes child parent"
+
+experience
+company "Amazon"
+role "SDE Intern"
+duration "Jun 2024-July 2024"
+bullet "Worked in Amaozn building projects"
+bullet "AWS Services Built"

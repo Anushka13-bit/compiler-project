@@ -1,5 +1,6 @@
 \documentclass[11pt]{article}
 \usepackage[margin=0.75in]{geometry}
+\usepackage[hidelinks]{hyperref}
 \pagestyle{empty}
 \setlength{\parindent}{0pt}
 \newcommand{\resumesection}[1]{%
@@ -10,7 +11,7 @@
 
 \begin{center}
     {\Huge \textbf{Ananya Mehta}} \\[4pt]
-    ananya.mehta@example.com
+    +91 98765 43210 $\mid$ \href{mailto:ananya.mehta@example.com}{ananya.mehta@example.com} $\mid$ \href{https://github.com/ananya-mehta}{github.com/ananya-mehta} $\mid$ \href{https://linkedin.com/in/ananya-mehta}{linkedin.com/in/ananya-mehta}
 \end{center}
 
 \resumesection{Education}
@@ -20,7 +21,17 @@
 \noindent C++, Python, Java
 
 \resumesection{Projects}
-\noindent\textbf{Resume Compiler}\\
-\noindent DSL-to-PDF resume generator built with flex and bison\\[4pt]
+\noindent\textbf{Resume Compiler}
+\begin{itemize}\setlength{\itemsep}{1pt}\setlength{\parskip}{0pt}
+  \item DSL-to-PDF resume generator built with flex and bison
+  \item Implements full compiler pipeline: lex, parse, AST, semantic checks, codegen
+\end{itemize}
+
+\resumesection{Experience}
+\noindent\textbf{Google} --- Software Engineering Intern \hfill May 2024 - Aug 2024
+\begin{itemize}\setlength{\itemsep}{1pt}\setlength{\parskip}{0pt}
+  \item Built internal tooling that reduced CI pipeline latency by 30\%
+  \item Collaborated with a team of 5 to design a new API surface
+\end{itemize}
 
 \end{document}

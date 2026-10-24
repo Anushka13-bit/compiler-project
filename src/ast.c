@@ -86,6 +86,37 @@ void resume_add_exp_bullet(Resume *r, const char *bullet) {
     e->bullets[e->bullet_count++] = strdup(bullet);
 }
 
+void resume_add_extra_section(Resume *r, const char *title, int line, int col) {
+    r->extras = grow(r->extras, &r->extra_capacity, r->extra_count, sizeof(ExtraSection));
+    ExtraSection *s = &r->extras[r->extra_count++];
+    s->title = strdup(title);
+    s->items = NULL;
+    s->item_count = 0;
+    s->item_capacity = 0;
+    s->line = line;
+    s->col  = col;
+}
+
+void resume_add_extra_item(Resume *r, const char *text) {
+    if (r->extra_count == 0) return;
+    ExtraSection *s = &r->extras[r->extra_count - 1];
+    s->items = grow(s->items, &s->item_capacity, s->item_count, sizeof(ExtraItem));
+    ExtraItem *it = &s->items[s->item_count++];
+    it->text = strdup(text);
+    it->subbullets = NULL;
+    it->sub_count = 0;
+    it->sub_capacity = 0;
+}
+
+void resume_add_extra_subbullet(Resume *r, const char *text) {
+    if (r->extra_count == 0) return;
+    ExtraSection *s = &r->extras[r->extra_count - 1];
+    if (s->item_count == 0) return;
+    ExtraItem *it = &s->items[s->item_count - 1];
+    it->subbullets = grow_str_array(it->subbullets, &it->sub_capacity, it->sub_count);
+    it->subbullets[it->sub_count++] = strdup(text);
+}
+
 void resume_free(Resume *r) {
     if (!r) {
         return;
@@ -121,6 +152,18 @@ void resume_free(Resume *r) {
         free(r->exp_entries[i].bullets);
     }
     free(r->exp_entries);
+    for (int i = 0; i < r->extra_count; i++) {
+        free(r->extras[i].title);
+        for (int j = 0; j < r->extras[i].item_count; j++) {
+            free(r->extras[i].items[j].text);
+            for (int k = 0; k < r->extras[i].items[j].sub_count; k++) {
+                free(r->extras[i].items[j].subbullets[k]);
+            }
+            free(r->extras[i].items[j].subbullets);
+        }
+        free(r->extras[i].items);
+    }
+    free(r->extras);
     free(r);
 }
 
@@ -162,6 +205,17 @@ void resume_debug_print(const Resume *r) {
                r->exp_entries[i].line, r->exp_entries[i].col);
         for (int j = 0; j < r->exp_entries[i].bullet_count; j++) {
             printf("      * %s\n", r->exp_entries[i].bullets[j]);
+        }
+    }
+
+    printf("  extra sections (%d):\n", r->extra_count);
+    for (int i = 0; i < r->extra_count; i++) {
+        printf("    [%s]\n", r->extras[i].title);
+        for (int j = 0; j < r->extras[i].item_count; j++) {
+            printf("      - %s\n", r->extras[i].items[j].text);
+            for (int k = 0; k < r->extras[i].items[j].sub_count; k++) {
+                printf("          * %s\n", r->extras[i].items[j].subbullets[k]);
+            }
         }
     }
 }

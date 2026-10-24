@@ -167,6 +167,31 @@ bool codegen_write_tex(const Resume *r, const char *tex_path) {
         fputs("\n", fp);
     }
 
+    /* ── Extra / Custom Sections ───────────────────────── */
+    for (int i = 0; i < r->extra_count; i++) {
+        fputs("\\resumesection{", fp);
+        write_escaped(fp, r->extras[i].title);
+        fputs("}\n", fp);
+        for (int j = 0; j < r->extras[i].item_count; j++) {
+            fputs("\\noindent\\textbf{", fp);
+            write_escaped(fp, r->extras[i].items[j].text);
+            fputs("}\n", fp);
+            if (r->extras[i].items[j].sub_count > 0) {
+                fputs("\\begin{itemize}\\setlength{\\itemsep}{1pt}"
+                      "\\setlength{\\parskip}{0pt}\n", fp);
+                for (int k = 0; k < r->extras[i].items[j].sub_count; k++) {
+                    fputs("  \\item ", fp);
+                    write_escaped(fp, r->extras[i].items[j].subbullets[k]);
+                    fputs("\n", fp);
+                }
+                fputs("\\end{itemize}\n", fp);
+            } else {
+                fputs("\\\\\n", fp);
+            }
+        }
+        fputs("\n", fp);
+    }
+
     fputs("\\end{document}\n", fp);
     fclose(fp);
     return true;

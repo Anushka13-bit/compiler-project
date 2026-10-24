@@ -1,6 +1,7 @@
 #include "interactive.h"
 
 #include <ctype.h>
+#include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -104,10 +105,73 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
     }
 
     /* 2. Contact info */
-    read_line("Phone number (press Enter to skip): ", phone, sizeof(phone));
-    read_line("Email address (press Enter to skip): ", email, sizeof(email));
-    read_line("GitHub username (press Enter to skip): ", github, sizeof(github));
-    read_line("LinkedIn username (press Enter to skip): ", linkedin, sizeof(linkedin));
+
+    /* Phone — digits, spaces, +, -, () only; 7-15 digits total */
+    {
+        regex_t re;
+        /* allow optional leading +, then digits/spaces/parens/hyphens, 7..15 total digits */
+        regcomp(&re, "^[+]?[0-9 ()\\-]{6,19}$", REG_EXTENDED | REG_NOSUB);
+        while (1) {
+            read_line("Phone number (press Enter to skip): ", phone, sizeof(phone));
+            if (phone[0] == '\0') break;
+            /* count only digits */
+            int digits = 0;
+            for (const char *p = phone; *p; p++) if (*p >= '0' && *p <= '9') digits++;
+            if (regexec(&re, phone, 0, NULL, 0) == 0 && digits >= 7 && digits <= 15) break;
+            printf("  Invalid phone number.\n"
+                   "  Expected: 7-15 digits, optionally with +, spaces, hyphens, or parentheses.\n"
+                   "  Example: +91 98765 43210  or  (212) 555-0100\n"
+                   "  Please re-enter your phone number.\n");
+        }
+        regfree(&re);
+    }
+
+    /* Email — validate format if provided */
+    {
+        regex_t re;
+        const char *email_pattern = "^[^@[:space:]]+@[^@[:space:]]+\\.[^@[:space:]]+$";
+        regcomp(&re, email_pattern, REG_EXTENDED | REG_NOSUB);
+        while (1) {
+            read_line("Email address (press Enter to skip): ", email, sizeof(email));
+            if (email[0] == '\0') break;
+            if (regexec(&re, email, 0, NULL, 0) == 0) break;
+            printf("  Invalid email format. Expected format: user@domain.tld\n"
+                   "  Please re-enter your email address.\n");
+        }
+        regfree(&re);
+    }
+
+    /* GitHub username — alphanumeric and hyphens only, no slashes or spaces */
+    {
+        regex_t re;
+        regcomp(&re, "^[A-Za-z0-9]([A-Za-z0-9-]{0,37}[A-Za-z0-9])?$", REG_EXTENDED | REG_NOSUB);
+        while (1) {
+            read_line("GitHub username (press Enter to skip): ", github, sizeof(github));
+            if (github[0] == '\0') break;
+            if (regexec(&re, github, 0, NULL, 0) == 0) break;
+            printf("  Invalid GitHub username.\n"
+                   "  Only letters, digits, and hyphens; must not start or end with a hyphen.\n"
+                   "  Do NOT include 'github.com/' — just the username (e.g. octocat).\n"
+                   "  Please re-enter your GitHub username.\n");
+        }
+        regfree(&re);
+    }
+
+    /* LinkedIn username — alphanumeric, hyphens, underscores; no slashes */
+    {
+        regex_t re;
+        regcomp(&re, "^[A-Za-z0-9_-]{3,100}$", REG_EXTENDED | REG_NOSUB);
+        while (1) {
+            read_line("LinkedIn username (press Enter to skip): ", linkedin, sizeof(linkedin));
+            if (linkedin[0] == '\0') break;
+            if (regexec(&re, linkedin, 0, NULL, 0) == 0) break;
+            printf("  Invalid LinkedIn username.\n"
+                   "  Only letters, digits, hyphens, and underscores (3-100 chars).\n"
+                   "  Do NOT include 'linkedin.com/in/' — just the username (e.g. john-doe).\n"
+                   "  Please re-enter your LinkedIn username.\n");
+        }
+        regfree(&re);
+    }
 
     /* 3. Education */
     typedef struct {
@@ -149,14 +213,25 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
     read_line("Enter skills separated by commas (e.g. C++, Python, Git, Docker):\n> ",
               skills_buf, sizeof(skills_buf));
 
-    /* Parse skills */
+    /* Parse skills — reject duplicates immediately */
     char *skills[64];
     int skill_count = 0;
     char *token = strtok(skills_buf, ",");
     while (token && skill_count < 64) {
         trim(token);
         if (token[0] != '\0') {
-            skills[skill_count++] = strdup(token);
+            /* Check for duplicates (case-insensitive) */
+            bool is_dup = false;
+            for (int k = 0; k < skill_count; k++) {
+                if (strcasecmp(skills[k], token) == 0) {
+                    printf("  Warning: duplicate skill \"%s\" ignored.\n", token);
+                    is_dup = true;
+                    break;
+                }
+            }
+            if (!is_dup) {
+                skills[skill_count++] = strdup(token);
+            }
         }
         token = strtok(NULL, ",");
     }
@@ -237,7 +312,61 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
         exp_count++;
     }
 
-    /* 7. Output filenames */
+    /* 7. Custom / extra sections (Publications, Awards, Certifications, etc.) */
+    typedef struct {
+        char title[128];
+        struct {
+            char text[512];
+            char subbullets[4][512];
+            int sub_count;
+        } items[32];
+        int item_count;
+    } ExtraSection;
+    ExtraSection extras[8];
+    int extra_count = 0;
+
+    printf("\n-- Custom Sections --\n");
+    printf("You can add extra sections such as Publications, Awards, Certifications, etc.\n");
+    while (extra_count < 8) {
+        bool add = ask_yes_no(
+            extra_count == 0 ? "Add a custom section?" : "Add another custom section?",
+            false);
+        if (!add) break;
+
+        while (1) {
+            read_line("  Section title (e.g. Publications, Awards): ",
+                      extras[extra_count].title, sizeof(extras[extra_count].title));
+            if (extras[extra_count].title[0] != '\0') break;
+            printf("  Section title cannot be empty.\n");
+        }
+
+        extras[extra_count].item_count = 0;
+        printf("  Add entries (press Enter with no text to stop):\n");
+        while (extras[extra_count].item_count < 32) {
+            int idx = extras[extra_count].item_count;
+            char entry[512];
+            read_line("    entry> ", entry, sizeof(entry));
+            if (entry[0] == '\0') break;
+            strncpy(extras[extra_count].items[idx].text, entry, 511);
+            extras[extra_count].items[idx].text[511] = '\0';
+            extras[extra_count].items[idx].sub_count = 0;
+            /* optional sub-bullets for this entry */
+            printf("    Add sub-bullets for this entry (press Enter to skip):\n");
+            while (extras[extra_count].items[idx].sub_count < 4) {
+                int si = extras[extra_count].items[idx].sub_count;
+                char sub[512];
+                read_line("      sub> ", sub, sizeof(sub));
+                if (sub[0] == '\0') break;
+                strncpy(extras[extra_count].items[idx].subbullets[si], sub, 511);
+                extras[extra_count].items[idx].subbullets[si][511] = '\0';
+                extras[extra_count].items[idx].sub_count++;
+            }
+            extras[extra_count].item_count++;
+        }
+        extra_count++;
+    }
+
+    /* 8. Output filenames */
     char safe_base[256];
     make_safe_filename(name, safe_base, sizeof(safe_base));
 
@@ -348,6 +477,23 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
             for (int b = 0; b < exps[i].bullet_count; b++) {
                 fprintf(fp, "bullet ");
                 write_escaped_dsl_string(fp, exps[i].bullets[b]);
+                fprintf(fp, "\n");
+            }
+        }
+    }
+
+    /* Custom / extra sections */
+    for (int i = 0; i < extra_count; i++) {
+        fprintf(fp, "\nextra ");
+        write_escaped_dsl_string(fp, extras[i].title);
+        fprintf(fp, "\n");
+        for (int j = 0; j < extras[i].item_count; j++) {
+            fprintf(fp, "item ");
+            write_escaped_dsl_string(fp, extras[i].items[j].text);
+            fprintf(fp, "\n");
+            for (int k = 0; k < extras[i].items[j].sub_count; k++) {
+                fprintf(fp, "bullet ");
+                write_escaped_dsl_string(fp, extras[i].items[j].subbullets[k]);
                 fprintf(fp, "\n");
             }
         }

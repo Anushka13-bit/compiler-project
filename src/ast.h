@@ -29,6 +29,19 @@ typedef struct {
 } ExpEntry;
 
 typedef struct {
+    char *text;          /* entry text (e.g. paper title / award name) */
+    char **subbullets;   /* optional sub-bullets */
+    int sub_count, sub_capacity;
+} ExtraItem;
+
+typedef struct {
+    char *title;         /* section heading (e.g. "Publications") */
+    ExtraItem *items;
+    int item_count, item_capacity;
+    int line, col;
+} ExtraSection;
+
+typedef struct {
     char *name;  /* NULL if missing */
     int name_line, name_col;
 
@@ -55,6 +68,9 @@ typedef struct {
 
     ExpEntry *exp_entries;
     int exp_count, exp_capacity;
+
+    ExtraSection *extras;   /* custom sections: Publications, Awards, etc. */
+    int extra_count, extra_capacity;
 } Resume;
 
 Resume *resume_new(void);
@@ -69,6 +85,10 @@ void resume_add_project_bullet(Resume *r, const char *bullet);
 void resume_add_exp_entry(Resume *r, const char *company, const char *role,
                           const char *duration, int line, int col);
 void resume_add_exp_bullet(Resume *r, const char *bullet);
+/* Start a new extra section; items added via resume_add_extra_item */
+void resume_add_extra_section(Resume *r, const char *title, int line, int col);
+void resume_add_extra_item(Resume *r, const char *text);
+void resume_add_extra_subbullet(Resume *r, const char *text);
 void resume_debug_print(const Resume *r);
 
 #endif

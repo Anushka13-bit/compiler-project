@@ -28,6 +28,7 @@ Resume *g_resume;
 %token SKILLS
 %token PROJECTS PROJECT BULLET
 %token EXPERIENCE COMPANY ROLE DURATION
+%token EXTRA ITEM
 %token <sval> STRING
 %token <sval> IDENTIFIER
 %token <dval> NUMBER
@@ -56,6 +57,7 @@ decl:
   | skills_sec
   | projects_sec
   | experience_sec
+  | extra_sec
   ;
 
 name_decl:
@@ -255,6 +257,44 @@ exp_bullet_list_opt:
     %empty
   | exp_bullet_list_opt BULLET STRING {
         resume_add_exp_bullet(g_resume, $3);
+        free($3);
+    }
+  ;
+
+/* ── Extra / Custom Sections ──────────────────────────── */
+
+extra_sec:
+    extra_open extra_item_list
+  ;
+
+extra_open:
+    EXTRA STRING {
+        resume_add_extra_section(g_resume, $2, @1.first_line, @1.first_column);
+        free($2);
+    }
+  ;
+
+extra_item_list:
+    %empty
+  | extra_item_list extra_item_entry
+  | extra_item_list error { yyerrok; yyclearin; }
+  ;
+
+extra_item_open:
+    ITEM STRING {
+        resume_add_extra_item(g_resume, $2);
+        free($2);
+    }
+  ;
+
+extra_item_entry:
+    extra_item_open extra_subbullet_list
+  ;
+
+extra_subbullet_list:
+    %empty
+  | extra_subbullet_list BULLET STRING {
+        resume_add_extra_subbullet(g_resume, $3);
         free($3);
     }
   ;

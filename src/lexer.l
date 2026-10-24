@@ -37,6 +37,8 @@ static char *unescape_string(const char *raw, int len);
 "company"       { return COMPANY; }
 "role"          { return ROLE; }
 "duration"      { return DURATION; }
+"extra"         { return EXTRA; }
+"item"          { return ITEM; }
 
 \"([^"\n\\]|\\.)*\" {
     yylval.sval = unescape_string(yytext, yyleng);
