@@ -137,8 +137,16 @@ GRAMMAR.md           tokens + EBNF
 ```
 
 ```bash
-# Interactive wizard mode (prompts for name, education, skills, projects)
+# Interactive wizard mode (prompts for name, contact, education, skills, projects, experience)
 ./bin/resumec -i
+
+# Interactive wizard tailored to a specific job posting (URL or file)
+./bin/resumec -i --job-url "https://jobs.example.com/backend-engineer"
+./bin/resumec -i --job-desc job_requirements.txt
+
+# Verify an existing resume against target job requirements during compilation
+./bin/resumec examples/ananya.resume --job-url "https://jobs.example.com/backend-engineer"
+./bin/resumec examples/ananya.resume --job-desc tests/fixtures/sample_job.txt -o tailored_resume.pdf
 
 # Standard compilation with specified files
 ./bin/resumec examples/ananya.resume -o ananya.pdf
@@ -146,3 +154,13 @@ GRAMMAR.md           tokens + EBNF
 ./bin/resumec examples/ananya.resume --dump-ast
 ./bin/resumec examples/ananya.resume --cgpa-scale 4 -o ananya.pdf
 ```
+
+## Job Tailoring & Requirements Matcher
+
+`resumec` can scrape and analyze real job postings to tailor your resume:
+
+- **Web Scraping:** Pass any job posting URL (`--job-url <url>`). The scraper fetches the posting via `curl`, strips HTML/script tags, and extracts technical requirements.
+- **Skill Extraction & Catalog:** Matches against a comprehensive catalog of 50+ languages, frameworks, cloud tools, databases, and engineering practices (with aliases like K8s, Postgres, AWS, ML).
+- **Gap Analysis & Compatibility Report:** Calculates a match percentage, highlights matched skills, and pinpoints missing requirements.
+- **Interactive Assistance:** In wizard mode (`-i`), it recommends missing skills while you type and allows one-click adding of missing requirements to optimize ATS scores.
+

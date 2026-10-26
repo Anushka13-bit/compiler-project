@@ -72,6 +72,18 @@ check_negative "duplicate skill" "$TESTS_DIR/duplicate_skill.resume" "duplicate 
 check_negative "missing name"    "$TESTS_DIR/missing_name.resume"    "must have a 'name'"
 
 echo
+echo "== target job requirements match test =="
+MATCH_OUT="$("$BIN" "$TESTS_DIR/golden/sample1.resume" --tex-only --job-desc "$TESTS_DIR/fixtures/sample_job.txt" -o "$TMP_DIR/job_test.pdf" 2>&1)"
+if echo "$MATCH_OUT" | grep -q 'JOB REQUIREMENTS MATCH ANALYSIS' \
+    && echo "$MATCH_OUT" | grep -q 'Matched Skills in Resume' \
+    && echo "$MATCH_OUT" | grep -q 'Missing Skills Mentioned in Job'; then
+    pass "job matcher correctly analyzes requirements against resume and outputs report"
+else
+    fail "job matcher output did not match expectations:"
+    echo "$MATCH_OUT"
+fi
+
+echo
 echo "== PDF smoke test =="
 PDFLATEX=""
 if command -v pdflatex >/dev/null 2>&1; then

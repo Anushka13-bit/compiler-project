@@ -1,0 +1,16 @@
+Job Title: Senior Backend & Cloud Engineer
+
+About the Role:
+We are looking for a talented software engineer to build scalable microservices.
+
+Requirements:
+- Strong proficiency in Python and C++
+- Hands-on experience with Docker and Kubernetes for container orchestration
+- Experience with AWS cloud infrastructure (EC2, S3, RDS)
+- Deep understanding of PostgreSQL and Redis caching
+- Familiarity with building REST APIs and CI/CD automation
+- Excellent grasp of Data Structures & Algorithms
+
+Nice to have:
+- React or frontend exposure
+- Machine Learning experience

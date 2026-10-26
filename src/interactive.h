@@ -4,8 +4,9 @@
 #include <stdbool.h>
 
 /* Runs an interactive terminal prompt to gather resume details,
- * generates a .resume file, and sets the paths for input_resume and output_pdf.
+ * optionally fetches/tailors against a target job link or file,
+ * verifies against job requirements, and generates a .resume file.
  * Returns true if successful, false if cancelled or an error occurred. */
-bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path);
+bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path, const char *initial_job_source);
 
 #endif

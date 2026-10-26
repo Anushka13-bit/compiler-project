@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ast.h"
+#include "job_matcher.h"
+
 static void trim(char *s) {
     if (!s) return;
     char *p = s;
@@ -84,20 +87,64 @@ static void write_escaped_dsl_string(FILE *fp, const char *str) {
     fputc('"', fp);
 }
 
-//create resume.dsl and pdf file
-bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
+//create resume.dsl and pdf file with optional target job tailoring
+bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path, const char *initial_job_source) {
     char name[256]     = {0};
     char email[256]    = {0};
     char phone[128]    = {0};
     char github[256]   = {0};
     char linkedin[256] = {0};
 
-    printf("\n=== resumec Interactive Resume Builder ===\n");
-    printf("Answer the following questions to create your customized resume.\n\n");
+    char job_source[512] = {0};
+    char *job_text = NULL;
+
+    printf("\n\033[1;36m=== resumec Interactive Resume Builder ===\033[0m\n");
+    printf("Create your ATS-optimized resume tailored to your target opportunities.\n\n");
+
+    /* ── Target Job Application Setup (Before Entering Details) ── */
+    char *target_skills[64] = {0};
+    int target_skill_count = 0;
+
+    if (initial_job_source && initial_job_source[0] != '\0') {
+        strncpy(job_source, initial_job_source, sizeof(job_source) - 1);
+        printf("\033[1;33m[+] Target Job Posting Specified:\033[0m %s\n", job_source);
+        printf("    Fetching and extracting requirements...\n");
+        job_text = job_fetch_description(job_source);
+    } else {
+        bool tailor = ask_yes_no("Would you like to tailor this resume to a specific job posting/URL?", true);
+        if (tailor) {
+            read_line("Enter Job Link (URL) or job file path: ", job_source, sizeof(job_source));
+            if (job_source[0] != '\0') {
+                printf("--> Fetching and scraping job requirements from: %s...\n", job_source);
+                job_text = job_fetch_description(job_source);
+            }
+        }
+    }
+
+    /* If job text was retrieved, extract & preview job requirements BEFORE asking user details */
+    if (job_text) {
+        Resume *dummy = resume_new();
+        JobAnalysis *prev = job_analyze_resume(dummy, job_text, job_source);
+        if (prev && prev->job_skill_count > 0) {
+            target_skill_count = prev->job_skill_count < 64 ? prev->job_skill_count : 64;
+            for (int i = 0; i < target_skill_count; i++) {
+                target_skills[i] = strdup(prev->job_skills[i]);
+            }
+            job_print_target_profile(job_source, target_skills, target_skill_count);
+        } else {
+            printf("\033[1;33mNote: Job text retrieved, but no standard keywords matched.\033[0m\n\n");
+        }
+        job_analysis_free(prev);
+        resume_free(dummy);
+    } else if (job_source[0] != '\0') {
+        printf("\033[1;31mCould not fetch job description from '%s'. Proceeding in standard mode.\033[0m\n\n", job_source);
+    }
 
     /* 1. Name */
     while (1) {
         if (!read_line("Enter your full name: ", name, sizeof(name))) {
+            for (int i = 0; i < target_skill_count; i++) free(target_skills[i]);
+            free(job_text);
             return false;
         }
         if (name[0] != '\0') break;
@@ -106,27 +153,25 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
 
     /* 2. Contact info */
 
-    /* Phone — digits, spaces, +, -, () only; 7-15 digits total */
+    /* Phone */
     {
         regex_t re;
-        /* allow optional leading +, then digits/spaces/parens/hyphens, 7..15 total digits */
         regcomp(&re, "^[+]?[0-9 ()\\-]{6,19}$", REG_EXTENDED | REG_NOSUB);
         while (1) {
             read_line("Phone number (press Enter to skip): ", phone, sizeof(phone));
             if (phone[0] == '\0') break;
-            /* count only digits */
             int digits = 0;
             for (const char *p = phone; *p; p++) if (*p >= '0' && *p <= '9') digits++;
             if (regexec(&re, phone, 0, NULL, 0) == 0 && digits >= 7 && digits <= 15) break;
-            printf("  Invalid phone number.\n"
-                   "  Expected: 7-15 digits, optionally with +, spaces, hyphens, or parentheses.\n"
-                   "  Example: +91 98765 43210  or  (212) 555-0100\n"
+            printf("  Invalid phone number format.\n"
+                   "  Expected 7-15 digits, optionally with +, spaces, hyphens, or parentheses\n"
+                   "  (e.g. \"+91 98765 43210\" or \"(212) 555-0100\").\n"
                    "  Please re-enter your phone number.\n");
         }
         regfree(&re);
     }
 
-    /* Email — validate format if provided */
+    /* Email */
     {
         regex_t re;
         const char *email_pattern = "^[^@[:space:]]+@[^@[:space:]]+\\.[^@[:space:]]+$";
@@ -141,7 +186,7 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
         regfree(&re);
     }
 
-    /* GitHub username — alphanumeric and hyphens only, no slashes or spaces */
+    /* GitHub username */
     {
         regex_t re;
         regcomp(&re, "^[A-Za-z0-9]([A-Za-z0-9-]{0,37}[A-Za-z0-9])?$", REG_EXTENDED | REG_NOSUB);
@@ -150,14 +195,14 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
             if (github[0] == '\0') break;
             if (regexec(&re, github, 0, NULL, 0) == 0) break;
             printf("  Invalid GitHub username.\n"
-                   "  Only letters, digits, and hyphens; must not start or end with a hyphen.\n"
+                   "  Only letters, digits, and hyphens are allowed (cannot start/end with a hyphen).\n"
                    "  Do NOT include 'github.com/' — just the username (e.g. octocat).\n"
                    "  Please re-enter your GitHub username.\n");
         }
         regfree(&re);
     }
 
-    /* LinkedIn username — alphanumeric, hyphens, underscores; no slashes */
+    /* LinkedIn username */
     {
         regex_t re;
         regcomp(&re, "^[A-Za-z0-9_-]{3,100}$", REG_EXTENDED | REG_NOSUB);
@@ -166,7 +211,7 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
             if (linkedin[0] == '\0') break;
             if (regexec(&re, linkedin, 0, NULL, 0) == 0) break;
             printf("  Invalid LinkedIn username.\n"
-                   "  Only letters, digits, hyphens, and underscores (3-100 chars).\n"
+                   "  Use 3-100 characters: letters, digits, hyphens, and underscores only.\n"
                    "  Do NOT include 'linkedin.com/in/' — just the username (e.g. john-doe).\n"
                    "  Please re-enter your LinkedIn username.\n");
         }
@@ -210,17 +255,35 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
     /* 4. Skills */
     char skills_buf[1024] = {0};
     printf("\n-- Skills Section --\n");
+    if (target_skill_count > 0) {
+        printf("\033[1;33m┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\033[0m\n");
+        printf("\033[1;33m┃ 💡 TARGET JOB SKILLS TO COVER:                                      ┃\033[0m\n");
+        printf("\033[1;33m┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\033[0m\n");
+        printf("\033[1;33m┃\033[0m ");
+        int col = 2;
+        for (int i = 0; i < target_skill_count; i++) {
+            int len = (int)strlen(target_skills[i]) + 2;
+            if (col + len > 66) {
+                printf("%*s\033[1;33m┃\033[0m\n\033[1;33m┃\033[0m ", 69 - col, "");
+                col = 2;
+            }
+            printf("\033[1;37m[%s]\033[0m ", target_skills[i]);
+            col += len + 1;
+        }
+        printf("%*s\033[1;33m┃\033[0m\n", 69 - col, "");
+        printf("\033[1;33m┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\033[0m\n");
+        printf("👉 \033[1;36mSuggestion:\033[0m Include any of these technologies you have worked with to boost your ATS match!\n");
+    }
     read_line("Enter skills separated by commas (e.g. C++, Python, Git, Docker):\n> ",
               skills_buf, sizeof(skills_buf));
 
     /* Parse skills — reject duplicates immediately */
-    char *skills[64];
+    char *skills[128];
     int skill_count = 0;
     char *token = strtok(skills_buf, ",");
-    while (token && skill_count < 64) {
+    while (token && skill_count < 128) {
         trim(token);
         if (token[0] != '\0') {
-            /* Check for duplicates (case-insensitive) */
             bool is_dup = false;
             for (int k = 0; k < skill_count; k++) {
                 if (strcasecmp(skills[k], token) == 0) {
@@ -236,6 +299,113 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
         token = strtok(NULL, ",");
     }
 
+    /* Live feedback on entered skills vs target job with re-prompt loop */
+    if (target_skill_count > 0) {
+        int matched = 0;
+        printf("\n\033[1;32m✓ Matched from Target Job (%d):\033[0m ", target_skill_count);
+        for (int i = 0; i < target_skill_count; i++) {
+            bool has = false;
+            for (int s = 0; s < skill_count; s++) {
+                if (strcasecmp(skills[s], target_skills[i]) == 0) { has = true; break; }
+            }
+            if (has) {
+                printf("\033[1;32m[%s]\033[0m ", target_skills[i]);
+                matched++;
+            }
+        }
+        if (matched == 0) printf("(none yet)");
+        printf("\n");
+
+        if (matched < target_skill_count) {
+            printf("\033[1;33m⚠️  Still Missing from Job Requirements:\033[0m ");
+            for (int i = 0; i < target_skill_count; i++) {
+                bool has = false;
+                for (int s = 0; s < skill_count; s++) {
+                    if (strcasecmp(skills[s], target_skills[i]) == 0) { has = true; break; }
+                }
+                if (!has) {
+                    printf("\033[33m[%s]\033[0m ", target_skills[i]);
+                }
+            }
+            printf("\n");
+        }
+
+        /* If skills are still missing, prompt user to add skills according to the job requirements */
+        while (matched < target_skill_count) {
+            bool want_more = ask_yes_no("\nWould you like to enter additional skills to match these target job requirements?", true);
+            if (!want_more) break;
+
+            printf("Enter additional skills (comma-separated, or type 'all' to include all remaining target skills):\n> ");
+            char more_buf[1024] = {0};
+            read_line("", more_buf, sizeof(more_buf));
+            if (more_buf[0] == '\0') break;
+
+            if (strcasecmp(more_buf, "all") == 0) {
+                for (int i = 0; i < target_skill_count && skill_count < 128; i++) {
+                    bool has = false;
+                    for (int s = 0; s < skill_count; s++) {
+                        if (strcasecmp(skills[s], target_skills[i]) == 0) { has = true; break; }
+                    }
+                    if (!has) {
+                        skills[skill_count++] = strdup(target_skills[i]);
+                        printf("  \033[1;32m✓ Added:\033[0m %s\n", target_skills[i]);
+                    }
+                }
+            } else {
+                char *tok = strtok(more_buf, ",");
+                while (tok && skill_count < 128) {
+                    trim(tok);
+                    if (tok[0] != '\0') {
+                        bool is_dup = false;
+                        for (int k = 0; k < skill_count; k++) {
+                            if (strcasecmp(skills[k], tok) == 0) {
+                                is_dup = true;
+                                break;
+                            }
+                        }
+                        if (!is_dup) {
+                            skills[skill_count++] = strdup(tok);
+                            printf("  \033[1;32m✓ Added:\033[0m %s\n", tok);
+                        }
+                    }
+                    tok = strtok(NULL, ",");
+                }
+            }
+
+            /* Recalculate matched skills */
+            matched = 0;
+            printf("\n\033[1;32m✓ Matched from Target Job (%d):\033[0m ", target_skill_count);
+            for (int i = 0; i < target_skill_count; i++) {
+                bool has = false;
+                for (int s = 0; s < skill_count; s++) {
+                    if (strcasecmp(skills[s], target_skills[i]) == 0) { has = true; break; }
+                }
+                if (has) {
+                    printf("\033[1;32m[%s]\033[0m ", target_skills[i]);
+                    matched++;
+                }
+            }
+            if (matched == 0) printf("(none yet)");
+            printf("\n");
+
+            if (matched < target_skill_count) {
+                printf("\033[1;33m⚠️  Still Missing from Job Requirements:\033[0m ");
+                for (int i = 0; i < target_skill_count; i++) {
+                    bool has = false;
+                    for (int s = 0; s < skill_count; s++) {
+                        if (strcasecmp(skills[s], target_skills[i]) == 0) { has = true; break; }
+                    }
+                    if (!has) {
+                        printf("\033[33m[%s]\033[0m ", target_skills[i]);
+                    }
+                }
+                printf("\n");
+            } else {
+                printf("\033[1;32m★ Excellent! You have covered 100%% of the target job requirements in your skills!\033[0m\n");
+            }
+        }
+    }
+
     /* 5. Projects */
     typedef struct {
         char title[256];
@@ -246,25 +416,31 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
     int project_count = 0;
 
     printf("\n-- Projects Section --\n");
+    if (target_skill_count > 0) {
+        printf("\033[1;33m💡 Project Suggestion:\033[0m Highlight projects that applied key job requirements (e.g. ");
+        for (int i = 0; i < target_skill_count && i < 4; i++) {
+            printf("\033[1;37m%s\033[0m%s", target_skills[i], (i + 1 < target_skill_count && i + 1 < 4) ? ", " : "");
+        }
+        printf(") in your descriptions and bullet points!\n");
+    }
     while (project_count < 16) {
         bool add = ask_yes_no(project_count == 0 ? "Add a project entry?" : "Add another project entry?",
                               project_count == 0);
         if (!add) break;
 
         while (1) {
-            read_line("  Project title: ", projects[project_count].title, sizeof(projects[project_count].title));
+            read_line("  Project name: ", projects[project_count].title, sizeof(projects[project_count].title));
             if (projects[project_count].title[0] != '\0') break;
-            printf("  Project title cannot be empty.\n");
+            printf("  Project name cannot be empty.\n");
         }
 
         projects[project_count].bullet_count = 0;
-        printf("  Add bullet points (press Enter with no text to stop):\n");
+        printf("  Enter bullet points describing the project (press Enter on empty line to finish):\n");
         while (projects[project_count].bullet_count < 8) {
-            char bul[512];
-            read_line("    bullet> ", bul, sizeof(bul));
-            if (bul[0] == '\0') break;
-            strncpy(projects[project_count].bullets[projects[project_count].bullet_count],
-                    bul, 511);
+            char bbuf[512] = {0};
+            read_line("  • ", bbuf, sizeof(bbuf));
+            if (bbuf[0] == '\0') break;
+            strncpy(projects[project_count].bullets[projects[project_count].bullet_count], bbuf, 511);
             projects[project_count].bullets[projects[project_count].bullet_count][511] = '\0';
             projects[project_count].bullet_count++;
         }
@@ -275,88 +451,86 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
     typedef struct {
         char company[256];
         char role[256];
-        char duration[256];
+        char duration[128];
         char bullets[8][512];
         int bullet_count;
     } ExpInput;
-    ExpInput exps[16];
+    ExpInput exp[16];
     int exp_count = 0;
 
     printf("\n-- Experience Section --\n");
+    if (target_skill_count > 0) {
+        printf("\033[1;33m💡 Experience Suggestion:\033[0m Frame your work achievements around skills expected by the role.\n");
+    }
     while (exp_count < 16) {
-        bool add = ask_yes_no(exp_count == 0 ? "Add an experience entry?" : "Add another experience entry?",
-                              false);
+        bool add = ask_yes_no(exp_count == 0 ? "Add an experience entry?" : "Add another experience entry?", false);
         if (!add) break;
 
         while (1) {
-            read_line("  Company name: ", exps[exp_count].company, sizeof(exps[exp_count].company));
-            if (exps[exp_count].company[0] != '\0') break;
+            read_line("  Company name: ", exp[exp_count].company, sizeof(exp[exp_count].company));
+            if (exp[exp_count].company[0] != '\0') break;
             printf("  Company name cannot be empty.\n");
         }
 
-        read_line("  Role / Job title (press Enter to skip): ",
-                  exps[exp_count].role, sizeof(exps[exp_count].role));
-        read_line("  Duration (e.g. Jun 2024 - Aug 2024, press Enter to skip): ",
-                  exps[exp_count].duration, sizeof(exps[exp_count].duration));
+        read_line("  Role / Title (optional, press Enter to skip): ", exp[exp_count].role, sizeof(exp[exp_count].role));
+        read_line("  Duration (e.g. \"Jun 2023 - Aug 2023\", optional): ", exp[exp_count].duration, sizeof(exp[exp_count].duration));
 
-        exps[exp_count].bullet_count = 0;
-        printf("  Add bullet points (press Enter with no text to stop):\n");
-        while (exps[exp_count].bullet_count < 8) {
-            char bul[512];
-            read_line("    bullet> ", bul, sizeof(bul));
-            if (bul[0] == '\0') break;
-            strncpy(exps[exp_count].bullets[exps[exp_count].bullet_count], bul, 511);
-            exps[exp_count].bullets[exps[exp_count].bullet_count][511] = '\0';
-            exps[exp_count].bullet_count++;
+        exp[exp_count].bullet_count = 0;
+        printf("  Enter bullet points for this role (press Enter on empty line to finish):\n");
+        while (exp[exp_count].bullet_count < 8) {
+            char bbuf[512] = {0};
+            read_line("  • ", bbuf, sizeof(bbuf));
+            if (bbuf[0] == '\0') break;
+            strncpy(exp[exp_count].bullets[exp[exp_count].bullet_count], bbuf, 511);
+            exp[exp_count].bullets[exp[exp_count].bullet_count][511] = '\0';
+            exp[exp_count].bullet_count++;
         }
         exp_count++;
     }
 
-    /* 7. Custom / extra sections (Publications, Awards, Certifications, etc.) */
+    /* 7. Extra / Custom sections */
     typedef struct {
-        char title[128];
-        struct {
-            char text[512];
-            char subbullets[4][512];
-            int sub_count;
-        } items[32];
+        char text[512];
+        char subbullets[4][512];
+        int sub_count;
+    } ExtraItemInput;
+    typedef struct {
+        char title[256];
+        ExtraItemInput items[16];
         int item_count;
-    } ExtraSection;
-    ExtraSection extras[8];
+    } ExtraSectionInput;
+
+    ExtraSectionInput extras[8];
     int extra_count = 0;
 
-    printf("\n-- Custom Sections --\n");
-    printf("You can add extra sections such as Publications, Awards, Certifications, etc.\n");
+    printf("\n-- Extra Sections (Awards, Publications, Certifications, etc.) --\n");
     while (extra_count < 8) {
-        bool add = ask_yes_no(
-            extra_count == 0 ? "Add a custom section?" : "Add another custom section?",
-            false);
+        bool add = ask_yes_no("Add a custom section (e.g. Publications, Awards, Certifications)?", false);
         if (!add) break;
 
         while (1) {
-            read_line("  Section title (e.g. Publications, Awards): ",
-                      extras[extra_count].title, sizeof(extras[extra_count].title));
+            read_line("  Section Title: ", extras[extra_count].title, sizeof(extras[extra_count].title));
             if (extras[extra_count].title[0] != '\0') break;
             printf("  Section title cannot be empty.\n");
         }
 
         extras[extra_count].item_count = 0;
-        printf("  Add entries (press Enter with no text to stop):\n");
-        while (extras[extra_count].item_count < 32) {
+        printf("  Enter items for this section (press Enter on empty item to finish):\n");
+        while (extras[extra_count].item_count < 16) {
+            char ibuf[512] = {0};
+            read_line("  Item: ", ibuf, sizeof(ibuf));
+            if (ibuf[0] == '\0') break;
             int idx = extras[extra_count].item_count;
-            char entry[512];
-            read_line("    entry> ", entry, sizeof(entry));
-            if (entry[0] == '\0') break;
-            strncpy(extras[extra_count].items[idx].text, entry, 511);
+            strncpy(extras[extra_count].items[idx].text, ibuf, 511);
             extras[extra_count].items[idx].text[511] = '\0';
             extras[extra_count].items[idx].sub_count = 0;
-            /* optional sub-bullets for this entry */
-            printf("    Add sub-bullets for this entry (press Enter to skip):\n");
+
+            /* optional subbullets */
             while (extras[extra_count].items[idx].sub_count < 4) {
-                int si = extras[extra_count].items[idx].sub_count;
-                char sub[512];
-                read_line("      sub> ", sub, sizeof(sub));
+                char sub[512] = {0};
+                read_line("    - sub-bullet (optional, press Enter to finish item): ", sub, sizeof(sub));
                 if (sub[0] == '\0') break;
+                int si = extras[extra_count].items[idx].sub_count;
                 strncpy(extras[extra_count].items[idx].subbullets[si], sub, 511);
                 extras[extra_count].items[idx].subbullets[si][511] = '\0';
                 extras[extra_count].items[idx].sub_count++;
@@ -364,6 +538,104 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
             extras[extra_count].item_count++;
         }
         extra_count++;
+    }
+
+    /* ── Target Job Verification & Gap Analysis ─────────── */
+    if (job_text) {
+        Resume *temp_r = resume_new();
+        temp_r->name = strdup(name);
+        if (email[0]) temp_r->email = strdup(email);
+        for (int i = 0; i < skill_count; i++) {
+            resume_add_skill(temp_r, skills[i], 0, 0);
+        }
+        for (int i = 0; i < project_count; i++) {
+            resume_add_project(temp_r, projects[i].title, 0, 0);
+            for (int j = 0; j < projects[i].bullet_count; j++) {
+                resume_add_project_bullet(temp_r, projects[i].bullets[j]);
+            }
+        }
+        for (int i = 0; i < exp_count; i++) {
+            resume_add_exp_entry(temp_r, exp[i].company,
+                                 exp[i].role[0] ? exp[i].role : NULL,
+                                 exp[i].duration[0] ? exp[i].duration : NULL, 0, 0);
+            for (int j = 0; j < exp[i].bullet_count; j++) {
+                resume_add_exp_bullet(temp_r, exp[i].bullets[j]);
+            }
+        }
+        for (int i = 0; i < extra_count; i++) {
+            resume_add_extra_section(temp_r, extras[i].title, 0, 0);
+            for (int j = 0; j < extras[i].item_count; j++) {
+                resume_add_extra_item(temp_r, extras[i].items[j].text);
+                for (int k = 0; k < extras[i].items[j].sub_count; k++) {
+                    resume_add_extra_subbullet(temp_r, extras[i].items[j].subbullets[k]);
+                }
+            }
+        }
+
+        JobAnalysis *analysis = job_analyze_resume(temp_r, job_text, job_source);
+        job_print_report(analysis);
+
+        /* Prompt user if missing skills should be added */
+        if (analysis->missing_count > 0) {
+            printf("\033[1;33mActionable Recommendation:\033[0m Your resume is currently missing %d skill(s) mentioned in the job requirements.\n",
+                   analysis->missing_count);
+            bool add_missing = ask_yes_no("Would you like to add any of these missing skills to your resume now?", true);
+            if (add_missing) {
+                printf("Enter missing skills to add (comma-separated, or type 'all' to add all):\n> ");
+                char to_add[512] = {0};
+                read_line("", to_add, sizeof(to_add));
+
+                if (strcasecmp(to_add, "all") == 0) {
+                    for (int k = 0; k < analysis->missing_count && skill_count < 128; k++) {
+                        skills[skill_count++] = strdup(analysis->missing_skills[k]);
+                        printf("  \033[1;32m✓ Added skill:\033[0m %s\n", analysis->missing_skills[k]);
+                    }
+                } else if (to_add[0] != '\0') {
+                    char *tok = strtok(to_add, ",");
+                    while (tok && skill_count < 128) {
+                        trim(tok);
+                        if (tok[0] != '\0') {
+                            bool is_dup = false;
+                            for (int s = 0; s < skill_count; s++) {
+                                if (strcasecmp(skills[s], tok) == 0) {
+                                    is_dup = true;
+                                    break;
+                                }
+                            }
+                            if (!is_dup) {
+                                skills[skill_count++] = strdup(tok);
+                                printf("  \033[1;32m✓ Added skill:\033[0m %s\n", tok);
+                            }
+                        }
+                        tok = strtok(NULL, ",");
+                    }
+                }
+
+                /* Re-run analysis to show new score */
+                resume_free(temp_r);
+                job_analysis_free(analysis);
+
+                temp_r = resume_new();
+                temp_r->name = strdup(name);
+                for (int i = 0; i < skill_count; i++) resume_add_skill(temp_r, skills[i], 0, 0);
+                for (int i = 0; i < project_count; i++) {
+                    resume_add_project(temp_r, projects[i].title, 0, 0);
+                    for (int j = 0; j < projects[i].bullet_count; j++) resume_add_project_bullet(temp_r, projects[i].bullets[j]);
+                }
+                for (int i = 0; i < exp_count; i++) {
+                    resume_add_exp_entry(temp_r, exp[i].company, exp[i].role[0] ? exp[i].role : NULL,
+                                         exp[i].duration[0] ? exp[i].duration : NULL, 0, 0);
+                    for (int j = 0; j < exp[i].bullet_count; j++) resume_add_exp_bullet(temp_r, exp[i].bullets[j]);
+                }
+                analysis = job_analyze_resume(temp_r, job_text, job_source);
+                printf("\n\033[1;32m★ Updated Job Match Score:\033[0m\n");
+                job_print_report(analysis);
+            }
+        }
+
+        job_analysis_free(analysis);
+        resume_free(temp_r);
+        free(job_text);
     }
 
     /* 8. Output filenames */
@@ -450,9 +722,9 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
             fprintf(fp, "project ");
             write_escaped_dsl_string(fp, projects[i].title);
             fprintf(fp, "\n");
-            for (int b = 0; b < projects[i].bullet_count; b++) {
+            for (int j = 0; j < projects[i].bullet_count; j++) {
                 fprintf(fp, "bullet ");
-                write_escaped_dsl_string(fp, projects[i].bullets[b]);
+                write_escaped_dsl_string(fp, projects[i].bullets[j]);
                 fprintf(fp, "\n");
             }
         }
@@ -462,21 +734,21 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
         fprintf(fp, "\nexperience\n");
         for (int i = 0; i < exp_count; i++) {
             fprintf(fp, "company ");
-            write_escaped_dsl_string(fp, exps[i].company);
+            write_escaped_dsl_string(fp, exp[i].company);
             fprintf(fp, "\n");
-            if (exps[i].role[0] != '\0') {
+            if (exp[i].role[0] != '\0') {
                 fprintf(fp, "role ");
-                write_escaped_dsl_string(fp, exps[i].role);
+                write_escaped_dsl_string(fp, exp[i].role);
                 fprintf(fp, "\n");
             }
-            if (exps[i].duration[0] != '\0') {
+            if (exp[i].duration[0] != '\0') {
                 fprintf(fp, "duration ");
-                write_escaped_dsl_string(fp, exps[i].duration);
+                write_escaped_dsl_string(fp, exp[i].duration);
                 fprintf(fp, "\n");
             }
-            for (int b = 0; b < exps[i].bullet_count; b++) {
+            for (int j = 0; j < exp[i].bullet_count; j++) {
                 fprintf(fp, "bullet ");
-                write_escaped_dsl_string(fp, exps[i].bullets[b]);
+                write_escaped_dsl_string(fp, exp[i].bullets[j]);
                 fprintf(fp, "\n");
             }
         }
@@ -500,7 +772,11 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path) {
     }
 
     fclose(fp);
-    printf("\nSuccessfully generated DSL file: %s\n", chosen_resume);
+    printf("\n\033[1;32m✓ Successfully generated DSL file: %s\033[0m\n", chosen_resume);
+
+    for (int i = 0; i < target_skill_count; i++) {
+        free(target_skills[i]);
+    }
 
     *out_resume_path = strdup(chosen_resume);
     *out_pdf_path = strdup(chosen_pdf);
