@@ -164,3 +164,21 @@ GRAMMAR.md           tokens + EBNF
 - **Gap Analysis & Compatibility Report:** Calculates a match percentage, highlights matched skills, and pinpoints missing requirements.
 - **Interactive Assistance:** In wizard mode (`-i`), it recommends missing skills while you type and allows one-click adding of missing requirements to optimize ATS scores.
 
+## Upload Existing Resume PDF & Incremental Tailoring
+
+Already have a resume PDF? You don't need to retype everything:
+
+```bash
+# Upload existing resume PDF and tailor against target job posting
+./bin/resumec --resume-pdf my_resume.pdf --job-url "https://jobs.example.com/posting"
+
+# Or tailor against a local job description file
+./bin/resumec --resume-pdf my_resume.pdf --job-desc target_job.txt
+```
+
+1. **Extracts Existing Data:** Parses candidate name, contact links, education, existing skills, projects, and work experience directly from your PDF.
+2. **Pinpoints Exact Gaps:** Shows what skills are already covered vs. missing for that specific job posting.
+3. **Targeted Prompts Only:** Prompts *only* for the missing requirements (e.g., adding missing skills or tailored project bullets).
+4. **Preserves Everything Else:** All existing contact information, education, and previous experiences remain 100% intact.
+5. **Generates Tailored Outputs:** Saves `<name>_tailored.resume` and compiles `<name>_tailored.pdf`.
+

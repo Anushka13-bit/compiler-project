@@ -161,6 +161,10 @@ skill_item:
         resume_add_skill(g_resume, $1, @1.first_line, @1.first_column);
         free($1);
     }
+  | STRING {
+        resume_add_skill(g_resume, $1, @1.first_line, @1.first_column);
+        free($1);
+    }
   ;
 
 /* ── Projects ─────────────────────────────────────────── */

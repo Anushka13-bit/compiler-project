@@ -8,6 +8,7 @@
 
 #include "ast.h"
 #include "job_matcher.h"
+#include "resume_parser.h"
 
 static void trim(char *s) {
     if (!s) return;
@@ -100,6 +101,15 @@ bool run_interactive_wizard(char **out_resume_path, char **out_pdf_path, const c
 
     printf("\n\033[1;36m=== resumec Interactive Resume Builder ===\033[0m\n");
     printf("Create your ATS-optimized resume tailored to your target opportunities.\n\n");
+
+    bool has_existing = ask_yes_no("Do you have an existing resume PDF to upload and tailor?", false);
+    if (has_existing) {
+        char existing_path[512] = {0};
+        read_line("Enter path to your existing resume PDF (e.g. resume.pdf): ", existing_path, sizeof(existing_path));
+        if (existing_path[0] != '\0') {
+            return run_tailor_existing_resume(existing_path, initial_job_source, out_resume_path, out_pdf_path);
+        }
+    }
 
     /* ── Target Job Application Setup (Before Entering Details) ── */
     char *target_skills[64] = {0};

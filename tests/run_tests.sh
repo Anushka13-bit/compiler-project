@@ -84,6 +84,23 @@ else
 fi
 
 echo
+echo "== resume PDF import & job tailoring test =="
+if command -v pdftotext >/dev/null 2>&1; then
+    TAILOR_OUT="$(printf "y\nAWS, Docker\nn\nn\n" | "$BIN" --resume-pdf ananya.pdf --job-desc "$TESTS_DIR/fixtures/sample_job.txt" -o "$TMP_DIR/ananya_tailored.pdf" 2>&1)"
+    rm -f ananya_mehta_tailored.resume
+    if echo "$TAILOR_OUT" | grep -q 'RESUME TAILORING ASSISTANT' \
+        && echo "$TAILOR_OUT" | grep -q 'EXISTING RESUME IMPORTED & ANALYZED' \
+        && echo "$TAILOR_OUT" | grep -q 'UPDATED JOB COMPATIBILITY REPORT'; then
+        pass "tailoring assistant correctly imports existing PDF, identifies gaps, and updates resume"
+    else
+        fail "tailoring assistant output did not match expectations:"
+        echo "$TAILOR_OUT"
+    fi
+else
+    echo "  SKIP: pdftotext not installed"
+fi
+
+echo
 echo "== PDF smoke test =="
 PDFLATEX=""
 if command -v pdflatex >/dev/null 2>&1; then

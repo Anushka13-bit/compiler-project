@@ -6,6 +6,14 @@
 //escape special characters in the text so it is not printed as a command
 static void write_escaped(FILE *fp, const char *text) {
     for (const char *p = text; *p; p++) {
+        if ((unsigned char)*p == 0xc2 && (unsigned char)*(p + 1) == 0x88) {
+            p++;
+            continue;
+        }
+        if ((unsigned char)*p == 0xcb && (unsigned char)*(p + 1) == 0x86) {
+            p++;
+            continue;
+        }
         switch (*p) {
             case '&': fputs("\\&", fp); break;
             case '%': fputs("\\%", fp); break;

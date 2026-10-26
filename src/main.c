@@ -12,6 +12,7 @@
 #include "interactive.h"
 #include "job_matcher.h"
 #include "parser.tab.h"
+#include "resume_parser.h"
 #include "semantic.h"
 
 extern FILE *yyin;
@@ -20,18 +21,20 @@ extern Resume *g_resume;
 static void print_usage(const char *prog) {
     fprintf(stderr,
             "usage: %s [<input.resume> | -] [-o <output.pdf>] [options]\n"
-            "       %s -i | --interactive [--job-url <url> | --job-desc <file>]\n\n"
+            "       %s -i | --interactive [--job-url <url> | --job-desc <file>]\n"
+            "       %s --resume-pdf <file.pdf> --job-url <url>\n\n"
             "options:\n"
-            "  -i, --interactive     run interactive resume builder wizard\n"
-            "  -o, --output <path>   output PDF path (default: <input basename>.pdf)\n"
-            "      --job-url <url>   fetch target job posting and verify resume requirements\n"
-            "      --job-desc <file> analyze resume against local job description file\n"
-            "      --keep-tex        keep the generated .tex file\n"
-            "      --tex-only        stop after code generation; skip pdflatex\n"
-            "      --cgpa-scale <N>  valid CGPA scale, 10 or 4 (default: 10)\n"
-            "      --dump-ast        print the parsed AST and exit (skips semantic analysis)\n"
-            "  -h, --help            show this help\n",
-            prog, prog);
+            "  -i, --interactive       run interactive resume builder wizard\n"
+            "  -o, --output <path>     output PDF path (default: <input basename>.pdf)\n"
+            "      --resume-pdf <file> import existing resume PDF to tailor against job link\n"
+            "      --job-url <url>     fetch target job posting and verify resume requirements\n"
+            "      --job-desc <file>   analyze resume against local job description file\n"
+            "      --keep-tex          keep the generated .tex file\n"
+            "      --tex-only          stop after code generation; skip pdflatex\n"
+            "      --cgpa-scale <N>    valid CGPA scale, 10 or 4 (default: 10)\n"
+            "      --dump-ast          print the parsed AST and exit (skips semantic analysis)\n"
+            "  -h, --help              show this help\n",
+            prog, prog, prog);
 }
 
 //if path is a.resume -> a.pdf
@@ -54,6 +57,7 @@ static char *replace_extension(const char *path, const char *new_ext) {
 int main(int argc, char **argv) {
     const char *output_pdf = NULL;
     const char *job_source = NULL;
+    const char *resume_pdf = NULL;
     bool keep_tex = false;
     bool tex_only = false;
     bool dump_ast = false;
@@ -66,6 +70,8 @@ int main(int argc, char **argv) {
         {"interactive", no_argument, 0, 'i'},
         {"job-url", required_argument, 0, 5},
         {"job-desc", required_argument, 0, 6},
+        {"resume-pdf", required_argument, 0, 7},
+        {"existing-resume", required_argument, 0, 7},
         {"keep-tex", no_argument, 0, 1},
         {"tex-only", no_argument, 0, 2},
         {"cgpa-scale", required_argument, 0, 3},
@@ -86,6 +92,9 @@ int main(int argc, char **argv) {
             case 5:
             case 6:
                 job_source = optarg;
+                break;
+            case 7:
+                resume_pdf = optarg;
                 break;
             case 1:
                 keep_tex = true;
@@ -118,7 +127,15 @@ int main(int argc, char **argv) {
     char *wizard_pdf = NULL;
     const char *input_path = NULL;
 
-    if (interactive) {
+    if (resume_pdf) {
+        if (!run_tailor_existing_resume(resume_pdf, job_source, &wizard_resume, &wizard_pdf)) {
+            return 1;
+        }
+        input_path = wizard_resume;
+        if (!output_pdf) {
+            output_pdf = wizard_pdf;
+        }
+    } else if (interactive) {
         if (!run_interactive_wizard(&wizard_resume, &wizard_pdf, job_source)) {
             return 1;
         }
