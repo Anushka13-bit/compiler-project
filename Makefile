@@ -4,7 +4,7 @@ BISON   := $(shell command -v /opt/homebrew/opt/bison/bin/bison 2>/dev/null || \
                     command -v /usr/local/opt/bison/bin/bison 2>/dev/null || \
                     command -v bison)
 
-CFLAGS  = -Wall -Wextra -std=c11 -Isrc -Ibuild -g
+CFLAGS  = -Wall -Wextra -std=c11 -D_POSIX_C_SOURCE=200809L -Isrc -Ibuild -g
 LDFLAGS =
 
 SRC_DIR   = src
