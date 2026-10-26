@@ -50,3 +50,9 @@ clean:
 
 test: all
 	bash tests/run_tests.sh
+
+server: all
+	cd server && npm start
+
+ui:
+	cd ui && npm run dev
