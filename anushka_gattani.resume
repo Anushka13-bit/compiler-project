@@ -1,31 +1,39 @@
 name "Anushka Gattani"
-phone "1234567891"
+phone "1234567890"
 email "anushka@gmail.com"
-github "Anushka13-bit"
-linkedin "anushka-gattani"
+github "Anushka13"
+linkedin "Anushka-gattani"
 
 education
 college "VIT"
-cgpa 8.60
+cgpa 9.20
 
 skills
+Cpp
+java
 Python
 Docker
-Java
-C++
 
 projects
-project "Compiler Project 1"
-bullet "Resume DSL Builder"
-bullet "Automated resume Generator"
-bullet "PDFLatex build"
-project "Operating System Project 1"
-bullet "OS dashboard for forking"
-bullet "Multiple processes child parent"
+project "Compiler Project"
+bullet "Automated Resume Genration"
+bullet "Entire compiler pipeline"
+bullet "Error detection and reports"
+project "Operating Systems Project"
+bullet "OS Dashboard"
+bullet "Viualisation of simulation of process"
+bullet "Multiple os algorithms executed"
 
 experience
-company "Amazon"
-role "SDE Intern"
-duration "Jun 2024-July 2024"
-bullet "Worked in Amaozn building projects"
-bullet "AWS Services Built"
+company "Oracle"
+role "Software Engineering Intern"
+duration "June 2024- July 2024"
+bullet "Worked on multiple projects with my team"
+bullet "I learnt about database management from the company's view"
+
+extra "Publications"
+item "Crop disease detection and prediction for the market prices"
+bullet "Published in 2024."
+
+extra "Certifications"
+item "Google Machine Learning Advanced"

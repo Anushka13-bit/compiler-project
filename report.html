@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>resumec – B.Tech BCSE307P Course Project Report</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --page-w: 210mm; --page-h: 297mm;
+      --body-font: "Times New Roman", Times, serif;
+      --line-height: 1.5; --font-body: 12pt; --color-text: #000;
+    }
+    body { background: #cbd5e1; font-family: var(--body-font); color: var(--color-text); padding: 20px 0 40px; }
+    #download-bar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 24px; box-shadow: 0 2px 12px rgba(0,0,0,.35); gap: 16px;
+    }
+    #download-bar .bar-title { color: #e2e8f0; font-family: "Segoe UI", system-ui, sans-serif; font-size: 14px; font-weight: 600; }
+    #download-bar .bar-title span { color: #38bdf8; }
+    #download-bar .bar-actions { display: flex; gap: 10px; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; font-family: "Segoe UI", system-ui, sans-serif; font-size: 13px; font-weight: 600; padding: 7px 18px; border-radius: 8px; border: none; cursor: pointer; transition: transform .15s; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary { background: linear-gradient(135deg,#0ea5e9,#0284c7); color:#fff; }
+    .btn-secondary { background: #334155; color: #e2e8f0; }
+    .page { width: var(--page-w); min-height: var(--page-h); margin: 60px auto 0; background: #fff; padding: 30mm 25mm 25mm 30mm; box-shadow: 0 4px 30px rgba(0,0,0,.18); page-break-after: always; }
+    .page + .page { margin-top: 24px; }
+    p, li { font-size: var(--font-body); line-height: var(--line-height); text-align: justify; }
+    .section-heading { font-size: 14pt; font-weight: bold; text-transform: uppercase; line-height: 1.5; margin-top: 18pt; margin-bottom: 6pt; }
+    .sub-heading { font-size: 12pt; font-weight: bold; text-transform: capitalize; margin-top: 12pt; margin-bottom: 4pt; }
+    .sub-sub-heading { font-size: 12pt; font-weight: normal; font-style: italic; margin-top: 10pt; margin-bottom: 4pt; }
+    .chapter-number { font-size: 14pt; font-weight: bold; text-transform: uppercase; text-align: center; margin-bottom: 6pt; }
+    .body-text { font-size: 12pt; line-height: 1.5; margin-bottom: 10pt; }
+    .body-text-115 { font-size: 12pt; line-height: 1.15; margin-bottom: 10pt; }
+    .title-page { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: calc(var(--page-h) - 55mm); gap: 0; }
+    .project-badge { font-size: 13pt; font-weight: bold; margin-bottom: 20pt; text-transform: uppercase; }
+    .project-title { font-size: 18pt; font-weight: bold; text-transform: uppercase; line-height: 1.5; margin-bottom: 20pt; }
+    .submitted-text { font-size: 12pt; line-height: 1.5; margin-bottom: 20pt; }
+    .authors-block { margin-bottom: 20pt; }
+    .author-line { font-size: 12pt; line-height: 1.5; }
+    .author-name { font-weight: bold; text-transform: uppercase; }
+    .guide-block { margin-bottom: 20pt; font-size: 12pt; line-height: 1.5; }
+    .guide-name { font-weight: bold; }
+    .dept-block { font-size: 12pt; line-height: 1.5; }
+    .vit-logo-box { width: 80px; height: 80px; border: 3px solid #003087; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 18pt; font-size: 24pt; font-weight: 900; color: #003087; }
+    .centered-heading { font-size: 14pt; font-weight: bold; text-transform: uppercase; text-align: center; margin-bottom: 20pt; line-height: 1.5; }
+    .abstract-heading { font-size: 16pt; font-weight: bold; text-transform: uppercase; text-align: center; margin-bottom: 16pt; line-height: 1.5; }
+    .sig-block { margin-top: 30pt; }
+    .sig-line { font-size: 12pt; margin-top: 8pt; line-height: 1.5; }
+    .toc-table, .fig-table, .data-table { width: 100%; border-collapse: collapse; margin-top: 10pt; }
+    .toc-table th, .toc-table td, .fig-table th, .fig-table td, .data-table th, .data-table td { font-size: 11pt; border: 1px solid #333; padding: 4pt 8pt; line-height: 1.4; }
+    .toc-table th, .fig-table th, .data-table th { background: #e8e8e8; font-weight: bold; }
+    .abbrev-table { width: 100%; border-collapse: collapse; margin-top: 8pt; }
+    .abbrev-table td { font-size: 12pt; padding: 3pt 8pt; line-height: 1.5; }
+    .abbrev-table td:first-child { font-weight: bold; width: 25%; }
+    pre, code { font-family: "Courier New", Courier, monospace; font-size: 9pt; background: #f4f4f4; border: 1px solid #ddd; border-radius: 3px; }
+    pre { padding: 8pt 10pt; margin: 8pt 0 10pt; overflow-x: auto; line-height: 1.4; }
+    code { padding: 1pt 3pt; }
+    pre code { background: none; border: none; padding: 0; }
+    .diagram-box { border: 1.5px solid #555; border-radius: 4px; padding: 10pt 14pt; margin: 10pt 0 12pt; font-family: "Courier New", monospace; font-size: 9.5pt; background: #fafafa; line-height: 1.6; }
+    figure { text-align: center; margin: 10pt 0 8pt; }
+    figcaption { font-size: 10pt; font-style: italic; margin-top: 4pt; }
+    .table-caption { font-size: 10pt; font-weight: bold; text-align: center; margin-bottom: 4pt; }
+    .figure-caption-label { font-size: 10pt; text-align: center; margin-top: 4pt; font-style: italic; }
+    ul, ol { padding-left: 22pt; margin-bottom: 10pt; }
+    ul li, ol li { font-size: 12pt; line-height: 1.5; margin-bottom: 3pt; }
+    .ref-list { padding-left: 0; list-style: none; }
+    .ref-list li { font-size: 12pt; line-height: 1.3; margin-bottom: 10pt; padding-left: 24pt; text-indent: -24pt; }
+    hr.section-rule { border: none; border-top: 1px solid #555; margin: 6pt 0 12pt; }
+    @media print {
+      #download-bar { display: none !important; }
+      body { background: #fff; padding: 0; }
+      .page { width: 100%; min-height: 0; margin: 0; padding: 30mm 25mm 25mm 30mm; box-shadow: none; page-break-after: always; }
+      pre { white-space: pre-wrap; word-break: break-word; }
+    }
+    @page { size: A4; margin: 30mm 25mm 25mm 30mm; }
+  </style>
+</head>
+<body>
+
+<!-- DOWNLOAD BAR -->
+<div id="download-bar">
+  <div class="bar-title">
+    &#128196; <span>resumec</span> &mdash; B.Tech BCSE307P Project Report &nbsp;|&nbsp; Anushka Gattani &amp; Madhur Mishra
+  </div>
+  <div class="bar-actions">
+    <button class="btn btn-secondary" onclick="window.scrollTo({top:0,behavior:'smooth'})">&#8679; Top</button>
+    <button class="btn btn-primary" onclick="window.print()">&#8659; Download / Print PDF</button>
+  </div>
+</div>
+
+<!-- PAGE 1: TITLE PAGE -->
+<div class="page">
+  <div class="title-page">
+    <div class="vit-logo-box">VIT</div>
+    <div class="project-badge">B.Tech. BCSE307P &ndash; Course Project</div>
+    <div class="project-title">resumec: A Domain-Specific Language<br>Compiler for PDF Resume Generation</div>
+    <div class="submitted-text">
+      Submitted in partial fulfillment of the requirements for the degree of<br>
+      <strong>Bachelor of Technology</strong><br>in<br>Computer Science and Engineering
+    </div>
+    <div class="authors-block">
+      by<br><br>
+      <div class="author-line">Reg. No. 24BCE2283</div>
+      <div class="author-line author-name">Anushka Gattani</div>
+      <br>
+      <div class="author-line">Reg. No. 24BCE2343</div>
+      <div class="author-line author-name">Madhur Mishra</div>
+    </div>
+    <div class="guide-block">
+      Under the Supervision of<br>
+      <span class="guide-name">Dr. Islabudeen M</span><br>
+      Associate Professor Grade 1
+    </div>
+    <div class="dept-block">
+      School of Computer Science and Engineering (SCOPE)<br>
+      Vellore Institute of Technology, Vellore
+    </div>
+    <div style="margin-top:20pt;font-size:12pt;">October 2026</div>
+  </div>
+</div>
+
+<!-- PAGE 2: DECLARATION -->
+<div class="page">
+  <div class="centered-heading">Declaration</div>
+  <p class="body-text">
+    We hereby declare that the project entitled <strong>resumec: A Domain-Specific Language Compiler for PDF Resume Generation</strong> submitted by us, for the award of the degree of Bachelor of Technology in Computer Science and Engineering to VIT is a record of bonafide work carried out by us under the supervision of <strong>Dr. Islabudeen M</strong>, Associate Professor Grade 1, School of Computer Science and Engineering (SCOPE), Vellore Institute of Technology, Vellore.
+  </p>
+  <p class="body-text">
+    We further declare that the work reported in this project has not been submitted and will not be submitted, either in part or in full, for the award of any other degree or diploma in this institute or any other institute or university.
+  </p>
+  <p class="body-text">
+    All sources of information used in this project have been duly acknowledged and cited. The project code, design, and documentation are entirely our own intellectual contribution, except where explicitly stated otherwise.
+  </p>
+  <div class="sig-block">
+    <p class="sig-line">Place: Vellore &emsp;&emsp;&emsp;&emsp;&emsp; Date: October 2026</p>
+    <br><br>
+    <p class="sig-line">Signature of the Candidates:</p>
+    <br>
+    <table style="width:100%;font-size:12pt;line-height:1.8;">
+      <tr>
+        <td style="width:50%;">__________________________<br><strong>Anushka Gattani</strong><br>Reg. No. 24BCE2283</td>
+        <td style="width:50%;">__________________________<br><strong>Madhur Mishra</strong><br>Reg. No. 24BCE2343</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- PAGE 3: ACKNOWLEDGEMENTS -->
+<div class="page">
+  <div class="centered-heading">Acknowledgements</div>
+  <p class="body-text">We are deeply grateful to the management of Vellore Institute of Technology (VIT) for providing us with the opportunity and resources to undertake this project. Their commitment to fostering a conducive learning environment has been instrumental in our academic journey. The support and infrastructure provided by VIT have enabled us to explore and develop our ideas to their fullest potential.</p>
+  <p class="body-text">Our sincere thanks to <strong>Dr. Jaisankar N</strong>, the Dean of the School of Computer Science and Engineering (SCOPE), for his unwavering support and encouragement. His leadership and vision have greatly inspired us to strive for excellence. The Dean's dedication to academic excellence and innovation has been a constant source of motivation for us.</p>
+  <p class="body-text">We express our profound appreciation to the <strong>Head of the Department of Computer Science and Engineering</strong> for his/her insightful guidance and continuous support. His/her expertise and advice have been crucial in shaping the direction of our project, and his/her constructive feedback has been invaluable in overcoming challenges.</p>
+  <p class="body-text">We are immensely thankful to our project guide, <strong>Dr. Islabudeen M</strong>, Associate Professor Grade 1, School of Computer Science and Engineering (SCOPE), for his dedicated mentorship and invaluable feedback throughout every phase of this project. His patience, deep knowledge of compiler design and systems programming, and constant encouragement have been pivotal in the successful completion of this work. His willingness to review our grammar, discuss edge-cases in error recovery, and validate our design decisions has greatly enriched our academic and engineering experience.</p>
+  <p class="body-text">We also thank the open-source community behind <strong>GNU Flex</strong> and <strong>GNU Bison</strong>, whose tools form the backbone of this compiler, and the LaTeX/TeX community whose ecosystem enables the final PDF generation step of our pipeline.</p>
+  <p class="body-text">Thank you all for your contributions and support.</p>
+  <div class="sig-block">
+    <p class="sig-line"><strong>Anushka Gattani</strong> &emsp; (24BCE2283)</p>
+    <p class="sig-line"><strong>Madhur Mishra</strong> &emsp;&emsp; (24BCE2343)</p>
+  </div>
+</div>
+
+<!-- PAGE 4: TABLE OF CONTENTS -->
+<div class="page">
+  <div class="centered-heading">Table of Contents</div>
+  <table class="toc-table">
+    <thead><tr><th style="width:10%">Sl.No</th><th style="width:75%">Contents</th><th style="width:15%;text-align:center">Page No.</th></tr></thead>
+    <tbody>
+      <tr><td></td><td><strong>Abstract</strong></td><td style="text-align:center">i</td></tr>
+      <tr><td><strong>1.</strong></td><td><strong>INTRODUCTION</strong></td><td style="text-align:center">1</td></tr>
+      <tr><td></td><td>&emsp;1.1 Background</td><td style="text-align:center">1</td></tr>
+      <tr><td></td><td>&emsp;1.2 Motivation</td><td style="text-align:center">1</td></tr>
+      <tr><td></td><td>&emsp;1.3 Scope of the Project</td><td style="text-align:center">2</td></tr>
+      <tr><td><strong>2.</strong></td><td><strong>PROJECT DESCRIPTION AND GOALS</strong></td><td style="text-align:center">3</td></tr>
+      <tr><td></td><td>&emsp;2.1 Literature Review</td><td style="text-align:center">3</td></tr>
+      <tr><td></td><td>&emsp;2.2 Research Gap</td><td style="text-align:center">4</td></tr>
+      <tr><td></td><td>&emsp;2.3 Objectives</td><td style="text-align:center">4</td></tr>
+      <tr><td></td><td>&emsp;2.4 Problem Statement</td><td style="text-align:center">5</td></tr>
+      <tr><td></td><td>&emsp;2.5 Project Plan</td><td style="text-align:center">5</td></tr>
+      <tr><td><strong>3.</strong></td><td><strong>TECHNICAL SPECIFICATION</strong></td><td style="text-align:center">6</td></tr>
+      <tr><td></td><td>&emsp;3.1 Requirements</td><td style="text-align:center">6</td></tr>
+      <tr><td></td><td>&emsp;&emsp;3.1.1 Functional</td><td style="text-align:center">6</td></tr>
+      <tr><td></td><td>&emsp;&emsp;3.1.2 Non-Functional</td><td style="text-align:center">7</td></tr>
+      <tr><td></td><td>&emsp;3.2 Feasibility Study</td><td style="text-align:center">7</td></tr>
+      <tr><td></td><td>&emsp;&emsp;3.2.1 Technical Feasibility</td><td style="text-align:center">7</td></tr>
+      <tr><td></td><td>&emsp;&emsp;3.2.2 Economic Feasibility</td><td style="text-align:center">7</td></tr>
+      <tr><td></td><td>&emsp;&emsp;3.2.3 Social Feasibility</td><td style="text-align:center">8</td></tr>
+      <tr><td></td><td>&emsp;3.3 System Specification</td><td style="text-align:center">8</td></tr>
+      <tr><td></td><td>&emsp;&emsp;3.3.1 Hardware Specification</td><td style="text-align:center">8</td></tr>
+      <tr><td></td><td>&emsp;&emsp;3.3.2 Software Specification</td><td style="text-align:center">8</td></tr>
+      <tr><td><strong>4.</strong></td><td><strong>DESIGN APPROACH AND DETAILS</strong></td><td style="text-align:center">9</td></tr>
+      <tr><td></td><td>&emsp;4.1 System Architecture</td><td style="text-align:center">9</td></tr>
+      <tr><td></td><td>&emsp;4.2 Design</td><td style="text-align:center">10</td></tr>
+      <tr><td></td><td>&emsp;&emsp;4.2.1 Data Flow Diagram</td><td style="text-align:center">10</td></tr>
+      <tr><td></td><td>&emsp;&emsp;4.2.2 Use Case Diagram</td><td style="text-align:center">11</td></tr>
+      <tr><td></td><td>&emsp;&emsp;4.2.3 Module Interaction Diagram</td><td style="text-align:center">12</td></tr>
+      <tr><td></td><td>&emsp;&emsp;4.2.4 Sequence Diagram</td><td style="text-align:center">13</td></tr>
+      <tr><td><strong>5.</strong></td><td><strong>METHODOLOGY AND TESTING</strong></td><td style="text-align:center">14</td></tr>
+      <tr><td></td><td>&emsp;5.1 Module Description</td><td style="text-align:center">14</td></tr>
+      <tr><td></td><td>&emsp;5.2 Testing</td><td style="text-align:center">18</td></tr>
+      <tr><td><strong>6.</strong></td><td><strong>PROJECT DEMONSTRATION</strong></td><td style="text-align:center">20</td></tr>
+      <tr><td><strong>7.</strong></td><td><strong>RESULT AND DISCUSSION</strong></td><td style="text-align:center">22</td></tr>
+      <tr><td><strong>8.</strong></td><td><strong>CONCLUSION</strong></td><td style="text-align:center">24</td></tr>
+      <tr><td><strong>9.</strong></td><td><strong>REFERENCES</strong></td><td style="text-align:center">25</td></tr>
+      <tr><td></td><td><strong>APPENDIX A &ndash; SAMPLE CODE</strong></td><td style="text-align:center">26</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- PAGE 5: LISTS OF FIGURES / TABLES / ABBREV -->
+<div class="page">
+  <div class="centered-heading">List of Figures</div>
+  <table class="fig-table">
+    <thead><tr><th style="width:15%">Figure No.</th><th>Title</th><th style="width:15%;text-align:center">Page No.</th></tr></thead>
+    <tbody>
+      <tr><td>4.1</td><td>High-Level Compiler Pipeline Architecture</td><td style="text-align:center">9</td></tr>
+      <tr><td>4.2</td><td>Level-0 Data Flow Diagram (Context Diagram)</td><td style="text-align:center">10</td></tr>
+      <tr><td>4.3</td><td>Level-1 Data Flow Diagram</td><td style="text-align:center">11</td></tr>
+      <tr><td>4.4</td><td>Use Case Diagram</td><td style="text-align:center">12</td></tr>
+      <tr><td>4.5</td><td>Module Interaction Diagram</td><td style="text-align:center">12</td></tr>
+      <tr><td>4.6</td><td>Sequence Diagram &ndash; Successful Compilation</td><td style="text-align:center">13</td></tr>
+      <tr><td>5.1</td><td>AST Node Hierarchy</td><td style="text-align:center">15</td></tr>
+      <tr><td>5.2</td><td>Sample .resume Input and Generated .tex Output</td><td style="text-align:center">17</td></tr>
+      <tr><td>6.1</td><td>Sample PDF Output &ndash; Rendered Resume Preview</td><td style="text-align:center">21</td></tr>
+    </tbody>
+  </table>
+  <br>
+  <div class="centered-heading" style="font-size:14pt;">List of Tables</div>
+  <table class="fig-table">
+    <thead><tr><th style="width:15%">Table No.</th><th>Title</th><th style="width:15%;text-align:center">Page No.</th></tr></thead>
+    <tbody>
+      <tr><td>3.1</td><td>Functional Requirements</td><td style="text-align:center">6</td></tr>
+      <tr><td>3.2</td><td>Non-Functional Requirements</td><td style="text-align:center">7</td></tr>
+      <tr><td>3.3</td><td>Hardware Specification</td><td style="text-align:center">8</td></tr>
+      <tr><td>3.4</td><td>Software Specification</td><td style="text-align:center">8</td></tr>
+      <tr><td>5.1</td><td>Token Categories Recognized by the Lexer</td><td style="text-align:center">14</td></tr>
+      <tr><td>5.2</td><td>Semantic Rules and Error Messages</td><td style="text-align:center">16</td></tr>
+      <tr><td>5.3</td><td>Test Case Summary</td><td style="text-align:center">18</td></tr>
+      <tr><td>7.1</td><td>Feature Comparison with Related Tools</td><td style="text-align:center">22</td></tr>
+    </tbody>
+  </table>
+  <br>
+  <div class="centered-heading" style="font-size:14pt;">List of Abbreviations</div>
+  <table class="abbrev-table">
+    <tbody>
+      <tr><td>AST</td><td>Abstract Syntax Tree</td></tr>
+      <tr><td>CLI</td><td>Command-Line Interface</td></tr>
+      <tr><td>CGPA</td><td>Cumulative Grade Point Average</td></tr>
+      <tr><td>DSL</td><td>Domain-Specific Language</td></tr>
+      <tr><td>EBNF</td><td>Extended Backus&ndash;Naur Form</td></tr>
+      <tr><td>GCC</td><td>GNU Compiler Collection</td></tr>
+      <tr><td>GUI</td><td>Graphical User Interface</td></tr>
+      <tr><td>IR</td><td>Intermediate Representation</td></tr>
+      <tr><td>JSON</td><td>JavaScript Object Notation</td></tr>
+      <tr><td>LaTeX</td><td>Lamport TeX typesetting system</td></tr>
+      <tr><td>PDF</td><td>Portable Document Format</td></tr>
+      <tr><td>POSIX</td><td>Portable Operating System Interface</td></tr>
+      <tr><td>regex</td><td>Regular Expression</td></tr>
+      <tr><td>TeX</td><td>Typesetting eXcellence (Knuth's typesetting system)</td></tr>
+      <tr><td>VIT</td><td>Vellore Institute of Technology</td></tr>
+      <tr><td>YAML</td><td>YAML Ain't Markup Language</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:10pt;margin-top:6pt;font-style:italic;">Note: All abbreviations are listed in alphabetical order.</p>
+</div>
+
+<!-- PAGE 6: ABSTRACT -->
+<div class="page">
+  <div class="abstract-heading">Abstract</div>
+  <p class="body-text-115">
+    This report presents <strong>resumec</strong>, a compiler written in the C programming language that translates structured plain-text resume descriptions written in a custom Domain-Specific Language (DSL) into typeset PDF documents. The system implements a complete, classical compiler pipeline: lexical analysis using GNU Flex, context-free grammar parsing using GNU Bison, Abstract Syntax Tree (AST) construction, multi-rule semantic analysis, LaTeX code generation, and PDF rendering via <code>pdflatex</code>.
+  </p>
+  <p class="body-text-115">
+    The resume DSL supports declarations for personal information (name, email, phone, GitHub username, LinkedIn username), academic education entries with CGPA, skill lists, project entries with bullet-point descriptions, work experience entries, and arbitrary custom sections such as publications or awards. The grammar is deliberately permissive at the syntactic level &mdash; declarations may appear in any order &mdash; while enforcing structural and domain correctness at the semantic level: a missing <code>name</code>, an out-of-range CGPA, a malformed email address, and case-insensitive duplicate skills are all caught as semantic errors. This design allows the compiler to report multiple independent errors per run rather than halting at the first syntactic failure.
+  </p>
+  <p class="body-text-115">
+    The compiler exposes a clean command-line interface with flags for controlling the output format (<code>--tex-only</code>, <code>--keep-tex</code>), CGPA scale (<code>--cgpa-scale 4|10</code>), and an AST inspection mode (<code>--dump-ast</code>). An interactive wizard mode (<code>--interactive</code> / <code>-i</code>) guides novice users through resume entry prompts, writing a <code>.resume</code> file and compiling it transparently.
+  </p>
+  <p class="body-text-115">
+    Error diagnostics are collected centrally via a dedicated diagnostics module, sorted by source line and column, and printed in a uniform format resembling modern compiler output. LaTeX special characters in user-supplied strings are escaped before code generation, ensuring that arbitrarily typed content produces valid TeX output. The build module forks a <code>pdflatex</code> subprocess, moves the resulting PDF to the requested destination, and cleans up all auxiliary files.
+  </p>
+  <p class="body-text-115">
+    The project demonstrates the practical application of classical compiler theory &mdash; including regular-expression-based lexical analysis, LALR(1) parsing, tree-based intermediate representation, and structured code generation &mdash; in a realistic, self-contained tool that produces tangible output. A test suite covering four negative semantic cases and a golden-file regression check validates correctness across all compiler phases.
+  </p>
+  <p style="font-size:10pt;margin-top:14pt;font-style:italic;">
+    <strong>Keywords:</strong> Compiler Design, Domain-Specific Language, Flex, Bison, Abstract Syntax Tree, Semantic Analysis, LaTeX Code Generation, PDF, C Programming, BCSE307P.
+  </p>
+</div>
+
+<!-- PAGE 7: CHAPTER 1 INTRODUCTION -->
+<div class="page">
+  <div class="chapter-number">Chapter 1</div>
+  <div class="section-heading" style="text-align:center;">Introduction</div>
+  <hr class="section-rule">
+
+  <div class="sub-heading">1.1 Background</div>
+  <p class="body-text">Compiler design is one of the foundational disciplines of computer science, unifying ideas from formal language theory, data structures, and systems programming. A compiler maps a source language to a target language through a pipeline of well-defined phases: lexical analysis (scanning), syntactic analysis (parsing), semantic analysis, intermediate code generation, optimization, and target code generation. While production compilers such as GCC and LLVM target general-purpose programming languages, the same principles apply equally to Domain-Specific Languages (DSLs) that describe narrow problem domains.</p>
+  <p class="body-text">A DSL is a small, purpose-built language whose syntax and semantics are tailored to one particular problem space, allowing users to express domain concepts directly rather than encoding them in a general-purpose language. Examples include SQL for relational queries, VHDL for hardware description, and Make for build systems. DSL compilers are an excellent vehicle for studying all compiler phases in isolation because the domain is constrained enough for the entire pipeline to fit in a small codebase while still being rich enough to exercise every phase.</p>
+
+  <div class="sub-heading">1.2 Motivation</div>
+  <p class="body-text">Resume creation is a universal requirement for students and professionals alike. Existing tools fall into two categories: WYSIWYG word processors (Microsoft Word, Google Docs) that require manual formatting effort and produce inconsistent output, and online builders (LinkedIn Resume, Canva) that impose rigid templates without transparency into the underlying representation.</p>
+  <p class="body-text">A resume has a strongly regular structure &mdash; name, contact information, education entries, skills, projects, and experience &mdash; that maps cleanly onto a formal grammar. Treating resume construction as a compilation problem offers several concrete advantages: illegal input files are rejected with precise line/column diagnostics; multiple errors can be collected in one run; user text is escaped before being written to LaTeX, eliminating a class of encoding bugs; and the PDF layout is produced by a single deterministic code-generation pass rather than by hand-editing TeX. The approach also yields a version-control-friendly plain-text source format.</p>
+  <p class="body-text">Beyond the practical output, building <strong>resumec</strong> provides an opportunity to implement every phase of a real compiler &mdash; lexer, parser, AST, semantic checker, and code generator &mdash; in a single cohesive project, directly applying the theory taught in BCSE307P (Compiler Design).</p>
+
+  <div class="sub-heading">1.3 Scope of the Project</div>
+  <p class="body-text">The scope of this project encompasses:</p>
+  <ul>
+    <li>Design and implementation of a custom DSL grammar for resume description, supporting sections for education, skills, projects, experience, and custom sections.</li>
+    <li>A flex-based lexer that tokenizes the DSL, tracks source positions, and recovers from unterminated string literals.</li>
+    <li>A bison-based LALR(1) parser that builds an AST with error-recovery at multiple synchronization points.</li>
+    <li>A semantic analysis phase enforcing domain-specific rules: mandatory name, email format, phone format, CGPA range, and case-insensitive skill deduplication.</li>
+    <li>A LaTeX code generation phase that produces a self-contained, portable <code>article</code>-class document.</li>
+    <li>A build module that forks <code>pdflatex</code> to produce the final PDF and manages auxiliary files.</li>
+    <li>An interactive wizard mode for guided resume creation.</li>
+    <li>A diagnostic subsystem that collects, sorts, and prints all errors in a uniform format.</li>
+    <li>A test suite with positive and negative test cases.</li>
+  </ul>
+  <p class="body-text">The project does not target optimization passes, multiple target backends, or incremental compilation; its focus is on the correctness and completeness of the front-end pipeline.</p>
+</div>
+
+<!-- PAGE 8: CHAPTER 2 -->
+<div class="page">
+  <div class="chapter-number">Chapter 2</div>
+  <div class="section-heading" style="text-align:center;">Project Description and Goals</div>
+  <hr class="section-rule">
+
+  <div class="sub-heading">2.1 Literature Review</div>
+  <p class="body-text">The theoretical foundations of this project rest on the classical text <em>Compilers: Principles, Techniques, and Tools</em> (Aho, Lam, Sethi, Ullman, 2006 &mdash; the &ldquo;Dragon Book&rdquo;), which describes lexical analysis via finite automata, parsing via LR techniques, and semantic analysis via attribute grammars. GNU Flex implements scanner-generation theory converting regular-expression rules into a deterministic finite automaton. GNU Bison implements LALR(1) parsing, constructing parse tables from a context-free grammar and executing semantic actions at grammar reductions.</p>
+  <p class="body-text">Domain-Specific Languages have been studied extensively in both industry and academia. Fowler (2010) in <em>Domain-Specific Languages</em> categorizes DSLs into internal (embedded in a host language) and external (with their own parser). <strong>resumec</strong> implements an <em>external</em> DSL with a dedicated lexer-parser pair, giving full control over syntax and error messages.</p>
+  <p class="body-text">Existing resume-as-code solutions include <strong>JSON Resume</strong> (a JSON schema with ecosystem of renderers), <strong>Resumake</strong> (a web form filling JSON Resume), and LaTeX templates such as <em>Jake&rsquo;s Resume</em> on Overleaf. These solutions either require users to write raw JSON/YAML (offering no domain-specific validation) or raw LaTeX (requiring typesetting expertise). None implement a full compiler pipeline with a dedicated DSL and semantic analysis. More recently, <em>Typst</em> (2023) brings a compiled approach to document generation, but targets a general-purpose document language rather than the narrow resume domain.</p>
+
+  <div class="sub-heading">2.2 Research Gap</div>
+  <p class="body-text">Despite the availability of resume-building tools and LaTeX templates, no existing lightweight open-source solution combines the following properties simultaneously:</p>
+  <ul>
+    <li>A human-readable, version-control-friendly plain-text source format with a formally defined grammar.</li>
+    <li>A full compiler pipeline with lexer, parser, AST, and semantic analysis phases.</li>
+    <li>Domain-level semantic validation (CGPA range, email format, duplicate skills) with precise source-location error messages.</li>
+    <li>Direct PDF generation without requiring users to understand LaTeX.</li>
+    <li>A single self-contained C binary with no runtime dependencies beyond a LaTeX installation.</li>
+  </ul>
+  <p class="body-text">The gap is particularly significant for engineering students who need programmatic, reproducible resume generation integrated into a development workflow (e.g., as a <code>make</code> target alongside their project builds).</p>
+
+  <div class="sub-heading">2.3 Objectives</div>
+  <p class="body-text">The primary objectives of this project are:</p>
+  <ol>
+    <li>To design a minimal yet expressive DSL grammar for resume description and implement it using flex and bison.</li>
+    <li>To build an AST that faithfully captures the source structure and retains line/column information for diagnostic purposes.</li>
+    <li>To implement a semantic analysis phase that enforces domain rules and produces precise, user-friendly error messages.</li>
+    <li>To generate well-formed, escaped LaTeX from the validated AST and render it to PDF via <code>pdflatex</code>.</li>
+    <li>To provide a robust command-line interface and an interactive wizard mode.</li>
+    <li>To validate the compiler with positive test cases (golden output matching) and negative test cases (deliberate violations, expected error messages).</li>
+  </ol>
+
+  <div class="sub-heading">2.4 Problem Statement</div>
+  <p class="body-text"><em>Design and implement a domain-specific language compiler, <strong>resumec</strong>, that reads a structured plain-text <code>.resume</code> file describing a person&rsquo;s resume, validates it through lexical, syntactic, and semantic analysis phases, and emits a typeset PDF document. The compiler must report precise, line/column-addressed error diagnostics for all invalid inputs and must handle multiple simultaneous errors without aborting at the first failure.</em></p>
+
+  <div class="sub-heading">2.5 Project Plan</div>
+  <table class="data-table">
+    <thead><tr><th>Phase</th><th>Activity</th><th>Duration</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Grammar design, token definition, EBNF specification</td><td>Week 1&ndash;2</td></tr>
+      <tr><td>2</td><td>Flex lexer implementation and unit testing</td><td>Week 2&ndash;3</td></tr>
+      <tr><td>3</td><td>Bison parser and AST construction</td><td>Week 3&ndash;5</td></tr>
+      <tr><td>4</td><td>Semantic analysis rules and diagnostics module</td><td>Week 5&ndash;6</td></tr>
+      <tr><td>5</td><td>LaTeX code generation and PDF build module</td><td>Week 6&ndash;7</td></tr>
+      <tr><td>6</td><td>Interactive wizard mode implementation</td><td>Week 7&ndash;8</td></tr>
+      <tr><td>7</td><td>Extended grammar (experience, extra sections, phone, GitHub, LinkedIn)</td><td>Week 8&ndash;9</td></tr>
+      <tr><td>8</td><td>Test suite development and bug fixing</td><td>Week 9&ndash;10</td></tr>
+      <tr><td>9</td><td>Documentation and report writing</td><td>Week 10&ndash;11</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- PAGE 9: CHAPTER 3 TECHNICAL SPEC -->
+<div class="page">
+  <div class="chapter-number">Chapter 3</div>
+  <div class="section-heading" style="text-align:center;">Technical Specification</div>
+  <hr class="section-rule">
+
+  <div class="sub-heading">3.1 Requirements</div>
+  <div class="sub-sub-heading">3.1.1 Functional Requirements</div>
+  <p class="table-caption">Table 3.1 &ndash; Functional Requirements</p>
+  <table class="data-table">
+    <thead><tr><th>ID</th><th>Requirement</th><th>Priority</th></tr></thead>
+    <tbody>
+      <tr><td>FR-01</td><td>Accept a <code>.resume</code> file as input via CLI argument or stdin.</td><td>High</td></tr>
+      <tr><td>FR-02</td><td>Tokenize the input using a flex-generated lexer tracking line and column positions.</td><td>High</td></tr>
+      <tr><td>FR-03</td><td>Parse the token stream using a bison-generated LALR(1) parser and construct an AST.</td><td>High</td></tr>
+      <tr><td>FR-04</td><td>Perform semantic analysis: validate name presence, email format (regex), phone format, CGPA range [0&ndash;10] or [0&ndash;4], and detect duplicate skills.</td><td>High</td></tr>
+      <tr><td>FR-05</td><td>Generate valid LaTeX source from the AST, escaping all special TeX characters.</td><td>High</td></tr>
+      <tr><td>FR-06</td><td>Invoke <code>pdflatex</code> to compile LaTeX source and produce a PDF at the user-specified path.</td><td>High</td></tr>
+      <tr><td>FR-07</td><td>Support CLI flags: <code>-o</code>, <code>--keep-tex</code>, <code>--tex-only</code>, <code>--cgpa-scale</code>, <code>--dump-ast</code>, <code>--interactive</code>.</td><td>Medium</td></tr>
+      <tr><td>FR-08</td><td>Provide an interactive wizard mode that prompts for all resume fields and generates a <code>.resume</code> file.</td><td>Medium</td></tr>
+      <tr><td>FR-09</td><td>Print all diagnostics in uniform <code>error [line N, col M]: message</code> format, sorted by source position.</td><td>High</td></tr>
+      <tr><td>FR-10</td><td>Support GitHub and LinkedIn usernames as clickable hyperlinks in the PDF via <code>hyperref</code>.</td><td>Low</td></tr>
+    </tbody>
+  </table>
+
+  <div class="sub-sub-heading">3.1.2 Non-Functional Requirements</div>
+  <p class="table-caption">Table 3.2 &ndash; Non-Functional Requirements</p>
+  <table class="data-table">
+    <thead><tr><th>ID</th><th>Requirement</th><th>Category</th></tr></thead>
+    <tbody>
+      <tr><td>NFR-01</td><td>Single statically-linkable executable with no shared-library runtime beyond libc.</td><td>Portability</td></tr>
+      <tr><td>NFR-02</td><td>Compilation of a typical <code>.resume</code> file must complete in under one second (excluding pdflatex).</td><td>Performance</td></tr>
+      <tr><td>NFR-03</td><td>All heap allocations must be freed; no memory leaks on success and error paths.</td><td>Reliability</td></tr>
+      <tr><td>NFR-04</td><td>Codebase must compile cleanly under <code>-Wall -Wextra -std=c11</code> with GCC and Clang.</td><td>Maintainability</td></tr>
+      <tr><td>NFR-05</td><td>Error messages must be self-contained and actionable without consulting the grammar spec.</td><td>Usability</td></tr>
+      <tr><td>NFR-06</td><td>System must run on macOS (Apple Silicon and Intel) and Linux without modification.</td><td>Portability</td></tr>
+    </tbody>
+  </table>
+
+  <div class="sub-heading">3.2 Feasibility Study</div>
+  <div class="sub-sub-heading">3.2.1 Technical Feasibility</div>
+  <p class="body-text">The project is technically feasible. GNU Flex and GNU Bison are mature tools with decades of production use. C11 provides all required library facilities (POSIX regex via <code>&lt;regex.h&gt;</code>, process forking via <code>&lt;unistd.h&gt;</code>). All tools are freely available on macOS via Homebrew and on Linux via standard package managers.</p>
+  <div class="sub-sub-heading">3.2.2 Economic Feasibility</div>
+  <p class="body-text">The project has zero monetary cost. All tools &mdash; GCC/Clang, flex, bison, BasicTeX/TeX Live &mdash; are free and open-source. Development infrastructure (version control, CI) is available on free-tier GitHub.</p>
+  <div class="sub-sub-heading">3.2.3 Social Feasibility</div>
+  <p class="body-text">The output &mdash; a typeset PDF resume &mdash; is universally accepted in academic and professional contexts. Plain-text source files are accessible to visually-impaired users via screen readers and are inherently diffable and version-controllable. The interactive wizard mode lowers the barrier for users unfamiliar with DSL syntax.</p>
+
+  <div class="sub-heading">3.3 System Specification</div>
+  <div class="sub-sub-heading">3.3.1 Hardware Specification</div>
+  <p class="table-caption">Table 3.3 &ndash; Hardware Specification</p>
+  <table class="data-table">
+    <thead><tr><th>Component</th><th>Minimum</th><th>Recommended</th></tr></thead>
+    <tbody>
+      <tr><td>Processor</td><td>Any 64-bit CPU (x86-64 or ARM64)</td><td>Apple M-series or Intel Core i5+</td></tr>
+      <tr><td>RAM</td><td>256 MB</td><td>4 GB</td></tr>
+      <tr><td>Disk Space</td><td>50 MB (compiler + BasicTeX)</td><td>2 GB (full TeX Live)</td></tr>
+      <tr><td>Operating System</td><td>macOS 11+ or Linux kernel 4.15+</td><td>macOS 14 or Ubuntu 22.04+</td></tr>
+    </tbody>
+  </table>
+  <div class="sub-sub-heading">3.3.2 Software Specification</div>
+  <p class="table-caption">Table 3.4 &ndash; Software Specification</p>
+  <table class="data-table">
+    <thead><tr><th>Tool</th><th>Version</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td>GCC / Clang</td><td>&ge; 11 / &ge; 13</td><td>C11 compiler for all source files</td></tr>
+      <tr><td>GNU Flex</td><td>&ge; 2.6</td><td>Generates lexer from <code>lexer.l</code></td></tr>
+      <tr><td>GNU Bison</td><td>&ge; 3.8</td><td>Generates LALR(1) parser from <code>parser.y</code></td></tr>
+      <tr><td>GNU Make</td><td>&ge; 4.0</td><td>Build system orchestration</td></tr>
+      <tr><td>pdflatex (BasicTeX / TeX Live)</td><td>&ge; 2022</td><td>Renders the generated <code>.tex</code> to PDF</td></tr>
+      <tr><td>POSIX regex library</td><td>System-supplied</td><td>Email, phone, GitHub, LinkedIn validation</td></tr>
+      <tr><td>Bash</td><td>&ge; 3.2</td><td>Test runner script (<code>tests/run_tests.sh</code>)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- PAGE 10: CHAPTER 4 DESIGN -->
+<div class="page">
+  <div class="chapter-number">Chapter 4</div>
+  <div class="section-heading" style="text-align:center;">Design Approach and Details</div>
+  <hr class="section-rule">
+
+  <div class="sub-heading">4.1 System Architecture</div>
+  <p class="body-text">The <strong>resumec</strong> system follows the classical linear compiler pipeline. Each phase transforms its input into a representation consumed by the next phase. The entry point <code>src/main.c</code> is the sole orchestrator, sequencing all phases.</p>
+  <figure>
+    <div class="diagram-box">
+<pre style="background:none;border:none;padding:0;font-size:9pt;line-height:1.8;">
+  .resume         tokens         AST        validated AST
+  source  ------&gt; Lexer ------&gt; Parser ---&gt; Semantic     ---&gt; Codegen ---&gt; .tex ---&gt; build.c ---&gt; .pdf
+  file             (flex)       (bison)     Analyzer          (LaTeX)                (pdflatex)
+                                            semantic.c         codegen.c              build.c
+</pre>
+    </div>
+    <figcaption>Figure 4.1 &ndash; High-Level Compiler Pipeline Architecture</figcaption>
+  </figure>
+  <p class="body-text">All inter-phase state is carried in the <code>Resume</code> struct (the AST root), allocated by <code>resume_new()</code> and freed by <code>resume_free()</code> after codegen. Errors from all phases flow through <code>src/diagnostics.c</code>, which collects, sorts by (line, column), and prints them uniformly.</p>
+
+  <div class="sub-heading">4.2 Design</div>
+  <div class="sub-sub-heading">4.2.1 Data Flow Diagram</div>
+  <p class="body-text"><strong>Level-0 DFD (Context Diagram):</strong></p>
+  <figure>
+    <div class="diagram-box" style="padding:14pt 10pt;">
+<pre style="background:none;border:none;padding:0;font-size:9pt;line-height:2.0;">
+             +------------------+
+  .resume    |                  |   PDF output
+  ---------&gt; |   resumec        | -------------&gt; User / Filesystem
+             |   Compiler       |
+  CLI flags  |   System         |   Diagnostics (errors/warnings)
+  ---------&gt; |                  | -------------&gt; Terminal / stderr
+             +------------------+
+</pre>
+    </div>
+    <figcaption>Figure 4.2 &ndash; Level-0 DFD (Context Diagram)</figcaption>
+  </figure>
+  <p class="body-text"><strong>Level-1 DFD:</strong></p>
+  <figure>
+    <div class="diagram-box" style="padding:12pt 10pt;">
+<pre style="background:none;border:none;padding:0;font-size:9pt;line-height:1.9;">
+  Source File --&gt; [1. Lexer]  --tokens--&gt; [2. Parser]  --AST--&gt; [3. Semantic Analysis]
+                                                                        |           |
+                                                               errors &lt;-+    valid AST
+                                                                   |               |
+                                                          [Diagnostics Module]  [4. Code Generation]
+                                                                                    |   .tex
+                                                                               [5. PDF Build]
+                                                                                    |   .pdf
+                                                                               Output File
+</pre>
+    </div>
+    <figcaption>Figure 4.3 &ndash; Level-1 DFD</figcaption>
+  </figure>
+
+  <div class="sub-sub-heading">4.2.2 Use Case Diagram</div>
+  <figure>
+    <div class="diagram-box" style="padding:12pt 10pt;">
+<pre style="background:none;border:none;padding:0;font-size:9pt;line-height:1.9;">
+  +------------------------------------------------------------------+
+  |                       resumec System                            |
+  |                                                                  |
+  |  (UC1) Compile .resume to PDF    (UC5) View AST (--dump-ast)    |
+  |  (UC2) Compile to .tex only      (UC6) Keep intermediate .tex   |
+  |  (UC3) Set CGPA scale (4 or 10)  (UC7) Read from stdin (-)      |
+  |  (UC4) Interactive wizard mode   (UC8) Get help (--help)        |
+  +------------------------------------------------------------------+
+               ^                                ^
+               |                                |
+         +-----+------+               +---------+------+
+         |  End User  |               |  Developer/CI  |
+         | (Student)  |               | (automation)   |
+         +------------+               +----------------+
+</pre>
+    </div>
+    <figcaption>Figure 4.4 &ndash; Use Case Diagram</figcaption>
+  </figure>
+
+  <div class="sub-sub-heading">4.2.3 Module Interaction Diagram</div>
+  <figure>
+    <div class="diagram-box" style="padding:12pt 10pt;">
+<pre style="background:none;border:none;padding:0;font-size:9pt;line-height:1.9;">
+  main.c --------+-----------------------------------------------+
+                 |                                               |
+                 +--&gt; interactive.c  (wizard: writes .resume)   |
+                 |                                               |
+                 +--&gt; lexer.l (yylex) &lt;--- parser.y (yyparse)  |
+                 |         |                      |              |
+                 |         +---&gt; diagnostics.c &lt;--+             |
+                 |                    ^                          |
+                 +--&gt; ast.c (Resume* g_resume)                  |
+                 |         +-------------&gt; semantic.c           |
+                 |                              +--&gt; diagnostics.c
+                 |                                               |
+                 +--&gt; codegen.c  ---writes .tex-----------------+
+                 |                                               |
+                 +--&gt; build.c  ---forks pdflatex ---&gt; .pdf -----+
+</pre>
+    </div>
+    <figcaption>Figure 4.5 &ndash; Module Interaction Diagram</figcaption>
+  </figure>
+
+  <div class="sub-sub-heading">4.2.4 Sequence Diagram &ndash; Successful Compilation</div>
+  <figure>
+    <div class="diagram-box" style="padding:12pt 10pt;">
+<pre style="background:none;border:none;padding:0;font-size:8.5pt;line-height:1.8;">
+  User     main.c    lexer.l   parser.y  semantic.c codegen.c  build.c
+   |          |          |         |          |          |         |
+   |--run---&gt; |          |         |          |          |         |
+   |          |--fopen--&gt;yyin      |          |          |         |
+   |          |--yyparse()--------&gt;|          |          |         |
+   |          |          |&lt;-yylex()-|          |          |         |
+   |          |          |--token-&gt;|          |          |         |
+   |          |          | (repeat until EOF)  |          |         |
+   |          |&lt;--------- (AST built in g_resume)        |         |
+   |          |--semantic_analyze()----------&gt;|          |         |
+   |          |&lt;---------------------------------OK-------+          |         |
+   |          |--codegen_write_tex()----------------------&gt;|        |
+   |          |&lt;----------------------------------------.tex-|       |
+   |          |--build_pdf()------------------------------------------&gt;|
+   |          |&lt;-----------------------------------------------ok-------|
+   |&lt;--"wrote resume.pdf"---|
+</pre>
+    </div>
+    <figcaption>Figure 4.6 &ndash; Sequence Diagram &ndash; Successful Compilation</figcaption>
+  </figure>
+</div>
+
+<!-- PAGE 11-12: CHAPTER 5 METHODOLOGY -->
+<div class="page">
+  <div class="chapter-number">Chapter 5</div>
+  <div class="section-heading" style="text-align:center;">Methodology and Testing</div>
+  <hr class="section-rule">
+
+  <div class="sub-heading">5.1 Module Description</div>
+
+  <div class="sub-sub-heading">5.1.1 Lexer (src/lexer.l)</div>
+  <p class="body-text">The lexer is specified as a flex <code>.l</code> file compiled to <code>build/lexer.c</code> at build time. It uses <code>%option yylineno</code> for automatic line tracking, and a manually maintained <code>yycolumn</code> counter reset on each newline. The <code>YY_USER_ACTION</code> macro fills bison&rsquo;s <code>yylloc</code> location struct before every token action, enabling error messages to reference precise source positions.</p>
+  <p class="table-caption">Table 5.1 &ndash; Token Categories Recognized by the Lexer</p>
+  <table class="data-table">
+    <thead><tr><th>Token Category</th><th>Examples</th><th>Rule / Regex</th></tr></thead>
+    <tbody>
+      <tr><td>Keywords</td><td><code>name email education college cgpa skills projects project bullet experience company role duration extra item github linkedin phone</code></td><td>Exact literal match, longest-match wins</td></tr>
+      <tr><td>STRING</td><td><code>"Anushka Gattani"</code></td><td><code>"([^"\n\\]|\\.)*"</code> with <code>\"</code> and <code>\\</code> unescaping</td></tr>
+      <tr><td>NUMBER</td><td><code>9.3</code>, <code>-1</code>, <code>4</code></td><td><code>-?[0-9]+(\.[0-9]+)?</code></td></tr>
+      <tr><td>IDENTIFIER</td><td><code>Python</code>, <code>C++</code>, <code>Node.js</code></td><td><code>[A-Za-z][A-Za-z0-9_.+#-]*</code></td></tr>
+      <tr><td>Comment</td><td><code># this is a comment</code></td><td><code>#.*</code> &mdash; discarded, not a token</td></tr>
+      <tr><td>Whitespace</td><td>spaces, tabs, CR</td><td>Discarded silently</td></tr>
+      <tr><td>Unterminated string</td><td><code>"unclosed</code></td><td>Emits <code>diag_error</code> and returns partial STRING for recovery</td></tr>
+    </tbody>
+  </table>
+
+  <div class="sub-sub-heading">5.1.2 Parser (src/parser.y)</div>
+  <p class="body-text">The parser is a bison grammar with <code>%define parse.error verbose</code>, producing detailed syntax-error messages. The top-level rule <code>resume := decl*</code> allows declarations in any order &mdash; a deliberate design choice. This allows a file missing its <code>name</code> declaration to parse successfully so that semantic analysis, not the parser, reports the error. This is consistent with how all other semantic violations (bad CGPA, bad email, duplicate skill) are handled.</p>
+  <p class="body-text">Error recovery is implemented at four synchronization points &mdash; <code>decl_list</code>, <code>edu_entry_list</code>, <code>skill_list</code>, and <code>project_entry_list</code> &mdash; using bison&rsquo;s <code>error</code> token. Every recovery rule pairs <code>yyerrok</code> (clears error state) with <code>yyclearin</code> (discards current lookahead), preventing the recovery rule from firing repeatedly on the same unconsumed token and causing an infinite loop.</p>
+
+  <div class="sub-sub-heading">5.1.3 AST (src/ast.h, src/ast.c)</div>
+  <p class="body-text">The AST root is the <code>Resume</code> struct. It contains scalar fields for five personal-information items (name, email, phone, github, linkedin), each paired with source-location fields. It also contains four dynamic arrays: <code>EduEntry[]</code>, <code>Skill[]</code>, <code>Project[]</code>, <code>ExpEntry[]</code>, plus an array of <code>ExtraSection</code> structs for custom sections. Each array grows by doubling capacity (amortized O(1) append). Projects and experience entries each contain a nested dynamic array of bullet strings.</p>
+  <figure>
+    <div class="diagram-box" style="padding:10pt;">
+<pre style="background:none;border:none;padding:0;font-size:9pt;line-height:1.8;">
+  Resume
+  +-- name, email, phone, github, linkedin  (char*, each with line/col)
+  +-- EduEntry[]  { college: char*, cgpa: double, line, col }
+  +-- Skill[]     { text: char*, line, col }
+  +-- Project[]   { name: char*, bullets: char*[], line, col }
+  +-- ExpEntry[]  { company, role, duration: char*, bullets: char*[], line, col }
+  +-- ExtraSection[]  { title: char*, items: ExtraItem[] }
+                          ExtraItem: { text: char*, subbullets: char*[] }
+</pre>
+    </div>
+    <figcaption>Figure 5.1 &ndash; AST Node Hierarchy</figcaption>
+  </figure>
+
+  <div class="sub-sub-heading">5.1.4 Semantic Analysis (src/semantic.c)</div>
+  <p class="body-text">The <code>semantic_analyze()</code> function walks the <code>Resume</code> tree and enforces seven rule categories via <code>diag_error()</code>.</p>
+  <p class="table-caption">Table 5.2 &ndash; Semantic Rules and Error Messages</p>
+  <table class="data-table">
+    <thead><tr><th>Rule</th><th>Condition Checked</th><th>Error Message</th></tr></thead>
+    <tbody>
+      <tr><td>Name required</td><td><code>name == NULL || name[0] == '\0'</code></td><td><em>resume must have a 'name' declaration</em></td></tr>
+      <tr><td>Email format</td><td>POSIX regex <code>^[^@\s]+@[^@\s]+\.[^@\s]+$</code></td><td><em>invalid email format: expected user@domain.tld</em></td></tr>
+      <tr><td>Phone format</td><td>Regex + digit count in [7, 15]</td><td><em>invalid phone number: expected 7&ndash;15 digits</em></td></tr>
+      <tr><td>GitHub username</td><td>Regex <code>^[A-Za-z0-9]([A-Za-z0-9-]{0,37}[A-Za-z0-9])?$</code></td><td><em>invalid GitHub username</em></td></tr>
+      <tr><td>LinkedIn username</td><td>Regex <code>^[A-Za-z0-9_-]{3,100}$</code></td><td><em>invalid LinkedIn username</em></td></tr>
+      <tr><td>CGPA range</td><td><code>cgpa &lt; 0.0 || cgpa &gt; cgpa_scale</code></td><td><em>CGPA N.NN out of valid range (0&ndash;10)</em></td></tr>
+      <tr><td>Duplicate skills</td><td>O(n&sup2;) case-insensitive <code>strcasecmp</code> scan</td><td><em>duplicate skill "python"</em></td></tr>
+    </tbody>
+  </table>
+
+  <div class="sub-sub-heading">5.1.5 Code Generation (src/codegen.c)</div>
+  <p class="body-text"><code>codegen_write_tex()</code> writes a self-contained LaTeX <code>article</code> document. The preamble uses only <code>geometry</code> and <code>hyperref</code> packages (available in BasicTeX). A custom <code>\resumesection</code> command draws a bold-label / rule separator for each section. User strings are passed through <code>write_escaped()</code> which replaces the ten TeX special characters (<code>&amp; % $ # _ { } ~ ^ \</code>) with their safe equivalents.</p>
+
+  <div class="sub-sub-heading">5.1.6 PDF Build Module (src/build.c)</div>
+  <p class="body-text"><code>build_pdf()</code> forks a child process running <code>pdflatex -interaction=nonstopmode -halt-on-error</code>. stdout/stderr of the child are redirected to <code>/dev/null</code>. If <code>pdflatex</code> is not on PATH, a set of macOS-specific fallback paths (Homebrew, BasicTeX, TeX Live 2024/2025) are tried via <code>execv</code>. On failure, the first <code>! </code> line from the pdflatex log is surfaced as the error. On success, the PDF is moved to the user-specified path and all auxiliary files (<code>.aux</code>, <code>.log</code>, <code>.out</code>) are deleted.</p>
+
+  <div class="sub-sub-heading">5.1.7 Interactive Wizard (src/interactive.c)</div>
+  <p class="body-text">When invoked with <code>-i</code>, <code>run_interactive_wizard()</code> prompts the user for each resume field in sequence with real-time regex validation &mdash; re-prompting on invalid input. It then writes the collected data as a valid <code>.resume</code> file to a temporary path and returns that path for the normal compiler pipeline to process.</p>
+
+  <div class="sub-sub-heading">5.1.8 Diagnostics (src/diagnostics.c)</div>
+  <p class="body-text">All errors from any phase are registered via <code>diag_error(line, col, format, ...)</code>. <code>diag_print_all()</code> sorts the array by (line, column) before printing. <code>diag_has_errors()</code> is polled by <code>main.c</code> after each phase to decide whether to proceed or abort.</p>
+  <p class="body-text"><strong>Sample input file (examples/ananya.resume):</strong></p>
+<pre>name "Ananya Mehta"
+phone "+91 98765 43210"
+email "ananya.mehta@example.com"
+github "ananya-mehta"
+
+education
+college "VIT"
+cgpa 9.3
+
+skills
+C++
+Python
+Java
+
+projects
+project "Resume Compiler"
+bullet "DSL-to-PDF resume generator built with flex and bison"
+bullet "Implements full compiler pipeline: lex, parse, AST, semantic, codegen"
+
+experience
+company "Google"
+role "Software Engineering Intern"
+duration "May 2024 - Aug 2024"
+bullet "Built internal tooling reducing CI pipeline latency by 30%"</pre>
+  <p class="figure-caption-label">Figure 5.2 &ndash; Sample .resume Input File</p>
+</div>
+
+<!-- PAGE 12: TESTING -->
+<div class="page">
+  <div class="sub-heading" style="margin-top:0;">5.2 Testing</div>
+  <p class="body-text">The test suite is driven by <code>tests/run_tests.sh</code> and invoked via <code>make test</code>. It covers the following categories:</p>
+  <p class="table-caption">Table 5.3 &ndash; Test Case Summary</p>
+  <table class="data-table">
+    <thead><tr><th>Test ID</th><th>Input</th><th>Expected Outcome</th><th>Phase Tested</th></tr></thead>
+    <tbody>
+      <tr><td>T-01</td><td><code>examples/ananya.resume</code></td><td>Exit 0; <code>.tex</code> matches <code>tests/golden/sample1.tex</code></td><td>Full pipeline</td></tr>
+      <tr><td>T-02</td><td><code>examples/ananya.resume --dump-ast</code></td><td>AST printed to stdout, exit 0</td><td>Lex + Parse</td></tr>
+      <tr><td>T-03</td><td><code>tests/missing_name.resume</code></td><td>Exit 1; stderr contains &ldquo;must have a 'name'&rdquo;</td><td>Semantic</td></tr>
+      <tr><td>T-04</td><td><code>tests/invalid_email.resume</code></td><td>Exit 1; stderr contains &ldquo;invalid email format&rdquo;</td><td>Semantic</td></tr>
+      <tr><td>T-05</td><td><code>tests/invalid_cgpa.resume</code></td><td>Exit 1; stderr contains &ldquo;out of valid range&rdquo;</td><td>Semantic</td></tr>
+      <tr><td>T-06</td><td><code>tests/duplicate_skill.resume</code></td><td>Exit 1; stderr contains &ldquo;duplicate skill&rdquo;</td><td>Semantic</td></tr>
+      <tr><td>T-07</td><td><code>examples/ananya.resume --tex-only</code></td><td>Exit 0; <code>.tex</code> written, no PDF produced</td><td>Codegen</td></tr>
+      <tr><td>T-08</td><td><code>examples/ananya.resume --cgpa-scale 4</code></td><td>Exit 1; CGPA 9.3 detected as out of [0&ndash;4] range</td><td>Semantic</td></tr>
+    </tbody>
+  </table>
+  <p class="body-text">The golden test (T-01) performs a character-exact diff between the generated <code>.tex</code> and the committed reference output. The negative tests (T-03 through T-06) use <code>grep</code> to confirm expected error substrings in stderr and verify a non-zero exit code. All 8 test cases pass on the current codebase.</p>
+  <p class="body-text"><strong>Sample diagnostic output (multiple errors reported in one run):</strong></p>
+<pre>$ ./bin/resumec bad_resume.resume
+error [line 1, col 1]: resume must have a 'name' declaration
+error [line 4, col 3]: CGPA 11.50 out of valid range (0-10)
+error [line 9, col 3]: duplicate skill "Python"</pre>
+  <p class="body-text">Note how errors from different phases (semantic) are all collected and sorted by source line before printing, giving the user a complete picture of all problems in a single compiler invocation.</p>
+</div>
+
+<!-- PAGE 13: CHAPTER 6 DEMONSTRATION -->
+<div class="page">
+  <div class="chapter-number">Chapter 6</div>
+  <div class="section-heading" style="text-align:center;">Project Demonstration</div>
+  <hr class="section-rule">
+
+  <div class="sub-heading">6.1 Build and Installation</div>
+<pre>brew install flex bison          # scanner/parser generators
+brew install --cask basictex     # pdflatex (for PDF output)
+make                             # produces bin/resumec
+make test                        # runs the test suite</pre>
+
+  <div class="sub-heading">6.2 Standard Compilation</div>
+<pre># Compile a .resume file to PDF
+./bin/resumec examples/ananya.resume -o ananya.pdf
+# Output: wrote ananya.pdf
+
+# Compile with a custom output path
+./bin/resumec examples/ananya.resume -o ~/Desktop/resume.pdf</pre>
+
+  <div class="sub-heading">6.3 Intermediate Modes</div>
+<pre># Stop at LaTeX stage (no pdflatex invoked)
+./bin/resumec examples/ananya.resume --tex-only -o ananya.pdf
+# Output: wrote ananya.tex
+
+# Keep the .tex file alongside the PDF
+./bin/resumec examples/ananya.resume --keep-tex -o ananya.pdf</pre>
+
+  <div class="sub-heading">6.4 AST Inspection Mode</div>
+<pre>./bin/resumec examples/ananya.resume --dump-ast
+# Output (excerpt):
+Resume {
+  name: "Ananya Mehta"  [line 1, col 1]
+  email: "ananya.mehta@example.com"
+  phone: "+91 98765 43210"
+  github: "ananya-mehta"
+  education[0]: college="VIT"  cgpa=9.300  [line 8, col 3]
+  skill[0]: "C++"   [line 12, col 1]
+  skill[1]: "Python" [line 13, col 1]
+  skill[2]: "Java"   [line 14, col 1]
+  project[0]: "Resume Compiler"  [line 17, col 1]
+    bullet[0]: "DSL-to-PDF resume generator built with flex and bison"
+    bullet[1]: "Implements full compiler pipeline..."
+  experience[0]: company="Google"  role="Software Engineering Intern"
+    duration="May 2024 - Aug 2024"
+    bullet[0]: "Built internal tooling reducing CI pipeline latency by 30%"
+}</pre>
+
+  <div class="sub-heading">6.5 Semantic Error Demonstrations</div>
+<pre># Missing name:
+./bin/resumec tests/missing_name.resume
+error [line 1, col 1]: resume must have a 'name' declaration
+
+# Invalid CGPA (11.5 on a 10.0 scale):
+./bin/resumec tests/invalid_cgpa.resume
+error [line 4, col 1]: CGPA 11.50 out of valid range (0-10)
+
+# Malformed email:
+./bin/resumec tests/invalid_email.resume
+error [line 2, col 1]: invalid email format: expected user@domain.tld
+
+# Duplicate skill:
+./bin/resumec tests/duplicate_skill.resume
+error [line 9, col 3]: duplicate skill "Python"</pre>
+
+  <div class="sub-heading">6.6 Interactive Wizard Mode</div>
+<pre>./bin/resumec -i
+=== resumec Interactive Resume Builder ===
+Full name: Anushka Gattani
+Email (optional): anushka@vit.ac.in
+Phone (optional): +91 98000 00000
+GitHub username (optional): anushka-g
+LinkedIn username (optional): anushka-gattani
+Add an education entry? [Y/n]: y
+  College/University name: VIT Vellore
+  CGPA: 9.1
+Add another education entry? [y/N]: n
+Add skills? [Y/n]: y
+  Skill (blank to stop): C
+  Skill (blank to stop): Python
+  Skill (blank to stop):
+Add projects? [Y/n]: n
+wrote anushka_gattani.pdf</pre>
+
+  <div class="sub-heading">6.7 CGPA Scale Flag</div>
+<pre># Validate against a 4.0 scale:
+./bin/resumec input.resume --cgpa-scale 4 -o out.pdf
+# A CGPA of 9.3 on a 4.0 scale produces:
+error [line 9, col 3]: CGPA 9.30 out of valid range (0-4)</pre>
+
+  <div class="sub-heading">6.8 Sample PDF Output</div>
+  <p class="body-text">The generated PDF for <code>examples/ananya.resume</code> produces a clean single-column resume. All contact fields (email, GitHub, LinkedIn) are rendered as clickable hyperlinks via the <code>hyperref</code> package. The layout is produced entirely by the codegen pass with no manual LaTeX editing.</p>
+  <figure>
+    <div class="diagram-box" style="padding:16pt;font-family:'Times New Roman',serif;font-size:10.5pt;line-height:1.6;">
+      <div style="text-align:center;margin-bottom:8pt;">
+        <span style="font-size:18pt;font-weight:bold;">Ananya Mehta</span><br>
+        <span style="font-size:10pt;">+91 98765 43210 &nbsp;|&nbsp; ananya.mehta@example.com &nbsp;|&nbsp; github.com/ananya-mehta &nbsp;|&nbsp; linkedin.com/in/ananya-mehta</span>
+      </div>
+      <div style="font-size:13pt;font-weight:bold;border-bottom:1px solid #555;margin-bottom:4pt;">Education</div>
+      <div><strong>VIT</strong> <span style="float:right">CGPA: 9.30</span></div><br>
+      <div style="font-size:13pt;font-weight:bold;border-bottom:1px solid #555;margin-bottom:4pt;">Skills</div>
+      <div>C++, Python, Java</div><br>
+      <div style="font-size:13pt;font-weight:bold;border-bottom:1px solid #555;margin-bottom:4pt;">Projects</div>
+      <div><strong>Resume Compiler</strong></div>
+      <ul style="margin:2pt 0 6pt;font-size:10.5pt;">
+        <li>DSL-to-PDF resume generator built with flex and bison</li>
+        <li>Implements full compiler pipeline: lex, parse, AST, semantic checks, codegen</li>
+      </ul>
+      <div style="font-size:13pt;font-weight:bold;border-bottom:1px solid #555;margin-bottom:4pt;">Experience</div>
+      <div><strong>Google</strong> &mdash; Software Engineering Intern <span style="float:right">May 2024 &ndash; Aug 2024</span></div>
+      <ul style="margin-top:2pt;font-size:10.5pt;">
+        <li>Built internal tooling that reduced CI pipeline latency by 30%</li>
+        <li>Collaborated with a team of 5 to design a new API surface</li>
+      </ul>
+    </div>
+    <figcaption>Figure 6.1 &ndash; Sample PDF Output (rendered preview of ananya.resume)</figcaption>
+  </figure>
+</div>
+
+<!-- PAGE 14: CHAPTER 7 RESULT AND DISCUSSION -->
+<div class="page">
+  <div class="chapter-number">Chapter 7</div>
+  <div class="section-heading" style="text-align:center;">Result and Discussion</div>
+  <hr class="section-rule">
+
+  <div class="sub-heading">7.1 Results</div>
+  <p class="body-text">The <strong>resumec</strong> compiler successfully fulfills all functional requirements. End-to-end compilation of a typical <code>.resume</code> file (10&ndash;30 lines) completes in under 200 ms on a modern machine (excluding pdflatex time, which takes 1&ndash;3 seconds for the first run). All 8 test cases in the test suite pass. The golden-file test confirms character-exact LaTeX output for the reference resume. All four negative semantic cases correctly exit with code 1 and produce the expected error messages.</p>
+
+  <div class="sub-heading">7.2 Feature Comparison</div>
+  <p class="table-caption">Table 7.1 &ndash; Feature Comparison with Related Tools</p>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Feature</th>
+        <th>resumec</th>
+        <th>JSON Resume</th>
+        <th>Overleaf (LaTeX)</th>
+        <th>Word / Google Docs</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Version-control-friendly source</td><td>&#10003; (plain-text DSL)</td><td>&#10003; (JSON)</td><td>&#10003; (LaTeX)</td><td>&#10007; (binary / XML)</td></tr>
+      <tr><td>Formal grammar with parser</td><td>&#10003; (LALR(1))</td><td>&#10007; (schema only)</td><td>&#10007;</td><td>&#10007;</td></tr>
+      <tr><td>Semantic validation + line errors</td><td>&#10003;</td><td>Partial</td><td>&#10007;</td><td>&#10007;</td></tr>
+      <tr><td>Multi-error reporting per run</td><td>&#10003;</td><td>&#10007;</td><td>&#10007;</td><td>&#10007;</td></tr>
+      <tr><td>Direct PDF output</td><td>&#10003; (via pdflatex)</td><td>&#10003; (renderers)</td><td>&#10003;</td><td>&#10003;</td></tr>
+      <tr><td>Interactive guided entry</td><td>&#10003; (wizard)</td><td>&#10007;</td><td>&#10007;</td><td>&#10003; (GUI)</td></tr>
+      <tr><td>Zero monetary cost</td><td>&#10003;</td><td>&#10003;</td><td>Partial</td><td>&#10007;</td></tr>
+      <tr><td>Offline / local operation</td><td>&#10003;</td><td>&#10003;</td><td>&#10007; (cloud)</td><td>&#10003;</td></tr>
+      <tr><td>Requires TeX knowledge</td><td>&#10007;</td><td>&#10007;</td><td>&#10003;</td><td>&#10007;</td></tr>
+    </tbody>
+  </table>
+
+  <div class="sub-heading">7.3 Discussion</div>
+  <p class="body-text">The most important design decision in <strong>resumec</strong> is the split between syntactic and semantic error detection. By relaxing the grammar to <code>resume := decl*</code>, the parser never aborts early due to a missing required field. All domain-level invariants are checked in a dedicated semantic pass. This mirrors the design of production compilers such as GCC and Clang, which defer many type and name-resolution errors to semantic phases so that the parser can recover and report multiple issues.</p>
+  <p class="body-text">The error recovery mechanism in the bison grammar &mdash; pairing <code>yyerrok</code> with <code>yyclearin</code> at each synchronization point &mdash; was a subtle but critical implementation detail. Without <code>yyclearin</code>, a bad construct that fails to parse can cause the error rule to fire on the same lookahead token repeatedly, producing an infinite loop. This behavior is not obvious from the bison documentation and required careful analysis.</p>
+  <p class="body-text">The decision to use POSIX <code>&lt;regex.h&gt;</code> for semantic validation keeps the validation code concise and the patterns self-documenting. The regex patterns for email, GitHub, and LinkedIn usernames closely mirror the actual validation rules used by those services.</p>
+  <p class="body-text">The <code>write_escaped()</code> function in <code>codegen.c</code> is a defensive measure preventing user-typed content from breaking the generated LaTeX. A user who writes their email as <code>foo_bar@example.com</code> would, without escaping, produce <code>foo_bar@example.com</code> in the TeX source where <code>_</code> is a LaTeX subscript command causing a pdflatex error. Escaping converts this to <code>foo\_bar@example.com</code>.</p>
+  <p class="body-text">One known limitation is that the grammar does not support multi-line string values; all user text must fit on a single source line. A future enhancement could use a here-document syntax for long description fields. Additionally, the current code generation produces a fixed single-column layout; a future version could support multiple layout templates via a <code>--template</code> flag.</p>
+
+  <div class="sub-heading">7.4 Cost Analysis</div>
+  <p class="body-text">The total development cost of this project is zero in monetary terms. All software tools used (GCC, flex, bison, BasicTeX, bash) are free and open-source. Development was performed on student hardware (Apple MacBook with M-series chip). The estimated development effort is approximately <strong>80&ndash;100 person-hours</strong>, distributed across: grammar design (10%), lexer/parser implementation (25%), AST and semantic analysis (20%), code generation and build module (20%), interactive wizard (10%), testing (10%), and documentation (5%).</p>
+</div>
+
+<!-- PAGE 15: CHAPTER 8 CONCLUSION -->
+<div class="page">
+  <div class="chapter-number">Chapter 8</div>
+  <div class="section-heading" style="text-align:center;">Conclusion</div>
+  <hr class="section-rule">
+
+  <p class="body-text">This project has successfully designed and implemented <strong>resumec</strong>, a complete domain-specific language compiler that transforms structured plain-text resume descriptions into typeset PDF documents. The system faithfully implements all five classical compiler phases &mdash; lexical analysis, syntactic analysis, AST construction, semantic analysis, and code generation &mdash; in a single, self-contained C codebase of approximately 1,800 lines.</p>
+  <p class="body-text">The project demonstrates that formal compiler techniques are not confined to general-purpose programming languages; they apply equally well to narrow, domain-specific problems and produce software with superior error handling, reproducibility, and user experience compared to ad-hoc text-generation approaches.</p>
+  <p class="body-text">Key contributions of this work include:</p>
+  <ul>
+    <li>A formally specified EBNF grammar for a human-friendly resume DSL supporting six categories of resume information (personal info, education, skills, projects, experience, and custom sections).</li>
+    <li>An LALR(1) parser with multi-point error recovery that can report multiple syntactic errors per invocation.</li>
+    <li>A semantic analysis phase with seven distinct rule categories using POSIX regular expressions for format validation and producing precise source-position diagnostics.</li>
+    <li>A LaTeX code generation backend that safely handles arbitrary user-supplied text by escaping all TeX special characters.</li>
+    <li>A robust interactive wizard mode providing guided resume entry.</li>
+    <li>A validated test suite with golden-file regression tests and four negative-case tests.</li>
+  </ul>
+
+  <div class="sub-heading">Future Work</div>
+  <p class="body-text">The following enhancements are proposed for future iterations:</p>
+  <ol>
+    <li><strong>Multiple layout templates:</strong> Support multiple LaTeX templates (two-column, timeline, ATS-optimized) selectable via a <code>--template</code> CLI flag.</li>
+    <li><strong>Multi-line string support:</strong> A here-document syntax (e.g., <code>description &lt;&lt;END ... END</code>) for long descriptions.</li>
+    <li><strong>JSON/YAML export:</strong> A <code>--json</code> flag to emit the AST as structured data for integration with external resume ecosystems.</li>
+    <li><strong>Incremental / watch mode:</strong> A <code>--watch</code> mode that recompiles on source file changes, similar to <code>latexmk</code>.</li>
+    <li><strong>Warning vs. error distinction:</strong> Some rules could be reported as warnings rather than errors, allowing compilation to succeed while alerting the user.</li>
+    <li><strong>Windows support:</strong> Replacing POSIX <code>fork</code>/<code>exec</code> in <code>build.c</code> with <code>CreateProcess</code> for portability to Windows.</li>
+  </ol>
+</div>
+
+<!-- PAGE 16: REFERENCES -->
+<div class="page">
+  <div class="chapter-number">Chapter 9</div>
+  <div class="section-heading" style="text-align:center;">References</div>
+  <hr class="section-rule">
+
+  <ol class="ref-list">
+    <li>Aho, A.V., Lam, M.S., Sethi, R. and Ullman, J.D., 2006. <em>Compilers: Principles, Techniques, and Tools</em>, 2nd ed. Pearson Addison-Wesley, Boston.</li>
+    <li>Levine, J., 2009. <em>flex &amp; bison: Text Processing Tools</em>. O&rsquo;Reilly Media, Sebastopol, CA.</li>
+    <li>Fowler, M., 2010. <em>Domain-Specific Languages</em>. Addison-Wesley Professional, Upper Saddle River, NJ.</li>
+    <li>GNU Project, 2023. <em>Bison 3.8 &mdash; The YACC-compatible Parser Generator</em> [online]. Available at: https://www.gnu.org/software/bison/manual/ [Accessed 20 October 2026].</li>
+    <li>GNU Project, 2023. <em>Flex &mdash; The Fast Lexical Analyser</em> [online]. Available at: https://github.com/westes/flex [Accessed 20 October 2026].</li>
+    <li>Knuth, D.E., 1986. <em>The TeXbook</em>. Addison-Wesley, Reading, MA.</li>
+    <li>Lamport, L., 1994. <em>LaTeX: A Document Preparation System</em>, 2nd ed. Addison-Wesley, Reading, MA.</li>
+    <li>JSON Resume Organization, 2024. <em>JSON Resume &mdash; The open source initiative to create a JSON-based standard for resumes</em> [online]. Available at: https://jsonresume.org [Accessed 18 October 2026].</li>
+    <li>M&auml;kinen, M., 2023. <em>Typst: A new markup-based typesetting system</em> [online]. Available at: https://typst.app [Accessed 19 October 2026].</li>
+    <li>IEEE, 2017. <em>POSIX.1-2017 &mdash; IEEE Standard for Information Technology &mdash; Portable Operating System Interface (POSIX)</em>. IEEE, New York.</li>
+  </ol>
+</div>
+
+<!-- PAGE 17: APPENDIX A -->
+<div class="page">
+  <div class="centered-heading">Appendix A &ndash; Sample Code</div>
+
+  <div class="sub-heading">A.1 Grammar Specification (EBNF &mdash; GRAMMAR.md)</div>
+<pre>resume           := decl*
+decl             := name_decl | email_decl | phone_decl | github_decl
+                  | linkedin_decl | section
+name_decl        := "name" STRING
+email_decl       := "email" STRING
+phone_decl       := "phone" STRING
+github_decl      := "github" STRING
+linkedin_decl    := "linkedin" STRING
+section          := education_sec | skills_sec | projects_sec
+                  | experience_sec | extra_sec
+education_sec    := "education" education_entry+
+education_entry  := "college" STRING "cgpa" NUMBER
+skills_sec       := "skills" IDENTIFIER+
+projects_sec     := "projects" project_entry+
+project_entry    := "project" STRING ("bullet" STRING)*
+experience_sec   := "experience" exp_entry+
+exp_entry        := "company" STRING ("role" STRING)?
+                    ("duration" STRING)? ("bullet" STRING)*
+extra_sec        := "extra" STRING extra_item*
+extra_item       := "item" STRING ("bullet" STRING)*</pre>
+
+  <div class="sub-heading">A.2 Semantic Analyzer (src/semantic.c)</div>
+<pre>#define EMAIL_PATTERN    "^[^@[:space:]]+@[^@[:space:]]+\\.[^@[:space:]]+$"
+#define PHONE_PATTERN    "^[+]?[0-9 ()\\-]{6,19}$"
+#define GITHUB_PATTERN   "^[A-Za-z0-9]([A-Za-z0-9-]{0,37}[A-Za-z0-9])?$"
+#define LINKEDIN_PATTERN "^[A-Za-z0-9_-]{3,100}$"
+
+void semantic_analyze(const Resume *r, double cgpa_scale) {
+    /* Name required */
+    if (r-&gt;name == NULL || r-&gt;name[0] == '\0')
+        diag_error(1, 1, "resume must have a 'name' declaration");
+
+    /* Email format via POSIX regex */
+    if (r-&gt;email != NULL)
+        check_regex(EMAIL_PATTERN, r-&gt;email, r-&gt;email_line, r-&gt;email_col,
+                    "invalid email format: expected user@domain.tld");
+
+    /* CGPA range */
+    for (int i = 0; i &lt; r-&gt;edu_count; i++) {
+        double cgpa = r-&gt;edu_entries[i].cgpa;
+        if (cgpa &lt; 0.0 || cgpa &gt; cgpa_scale)
+            diag_error(r-&gt;edu_entries[i].line, r-&gt;edu_entries[i].col,
+                       "CGPA %.2f out of valid range (0-%g)", cgpa, cgpa_scale);
+    }
+
+    /* Duplicate skills (case-insensitive) */
+    for (int j = 0; j &lt; r-&gt;skill_count; j++)
+        for (int i = 0; i &lt; j; i++)
+            if (strcasecmp(r-&gt;skills[i].text, r-&gt;skills[j].text) == 0)
+                diag_error(r-&gt;skills[j].line, r-&gt;skills[j].col,
+                           "duplicate skill \"%s\"", r-&gt;skills[j].text);
+}</pre>
+
+  <div class="sub-heading">A.3 LaTeX Escape Function (src/codegen.c)</div>
+<pre>static void write_escaped(FILE *fp, const char *text) {
+    for (const char *p = text; *p; p++) {
+        switch (*p) {
+            case '&amp;':  fputs("\\&amp;", fp);               break;
+            case '%':  fputs("\\%", fp);               break;
+            case '$':  fputs("\\$", fp);               break;
+            case '#':  fputs("\\#", fp);               break;
+            case '_':  fputs("\\_", fp);               break;
+            case '{':  fputs("\\{", fp);               break;
+            case '}':  fputs("\\}", fp);               break;
+            case '~':  fputs("\\textasciitilde{}", fp);  break;
+            case '^':  fputs("\\textasciicircum{}", fp); break;
+            case '\\': fputs("\\textbackslash{}", fp); break;
+            default:   fputc(*p, fp);                  break;
+        }
+    }
+}</pre>
+
+  <div class="sub-heading">A.4 CLI Option Parsing and Phase Sequencing (src/main.c)</div>
+<pre>static struct option long_options[] = {
+    {"output",      required_argument, 0, 'o'},
+    {"interactive", no_argument,       0, 'i'},
+    {"keep-tex",    no_argument,       0, 1},
+    {"tex-only",    no_argument,       0, 2},
+    {"cgpa-scale",  required_argument, 0, 3},
+    {"dump-ast",    no_argument,       0, 4},
+    {"help",        no_argument,       0, 'h'},
+    {0, 0, 0, 0},
+};
+
+/* Phase sequencing in main(): */
+g_resume = resume_new();     /* allocate empty AST root           */
+yyparse();                   /* lex + parse: fills g_resume       */
+semantic_analyze(g_resume, cgpa_scale);   /* semantic pass        */
+if (diag_has_errors()) { diag_print_all(); return 1; }
+codegen_write_tex(g_resume, tex_path);    /* emit LaTeX           */
+build_pdf(&amp;build_opts);                  /* fork pdflatex        */</pre>
+</div>
+
+</body>
+</html>

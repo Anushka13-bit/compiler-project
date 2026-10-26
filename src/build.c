@@ -15,6 +15,8 @@ static const char *PDFLATEX_FALLBACKS[] = {
     "/usr/local/bin/pdflatex",
 };
 
+
+//supposed saved as output/anushka.tex so dir is output and job_name is anushka
 static void split_dir_and_jobname(const char *tex_path, char *dir, size_t dir_size, char *jobname,
                                   size_t jobname_size) {
     const char *slash = strrchr(tex_path, '/');
@@ -81,7 +83,8 @@ static bool run_pdflatex(const char *tex_path, const char *dir) {
     }
     return true;
 }
-
+ 
+//report first error from the log file if compilation fails
 static void report_first_latex_error(const char *log_path) {
     FILE *fp = fopen(log_path, "r");
     if (!fp) {
@@ -105,6 +108,7 @@ static void report_first_latex_error(const char *log_path) {
     fprintf(stderr, "error: LaTeX compilation failed (see pdflatex output for details)\n");
 }
 
+//move the pdf from the output directory to the desired location
 static bool move_file(const char *from, const char *to) {
     if (strcmp(from, to) == 0) {
         return true;
@@ -133,6 +137,7 @@ static bool move_file(const char *from, const char *to) {
     return true;
 }
 
+//build the pdf file
 bool build_pdf(const BuildOptions *opts) {
     char dir[1024], jobname[512];
     split_dir_and_jobname(opts->tex_path, dir, sizeof(dir), jobname, sizeof(jobname));
