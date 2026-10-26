@@ -58,6 +58,9 @@ int main(int argc, char **argv) {
     const char *output_pdf = NULL;
     const char *job_source = NULL;
     const char *resume_pdf = NULL;
+    const char *extract_target = NULL;
+    const char *analyze_target = NULL;
+    bool output_json = false;
     bool keep_tex = false;
     bool tex_only = false;
     bool dump_ast = false;
@@ -72,6 +75,9 @@ int main(int argc, char **argv) {
         {"job-desc", required_argument, 0, 6},
         {"resume-pdf", required_argument, 0, 7},
         {"existing-resume", required_argument, 0, 7},
+        {"extract-json", required_argument, 0, 8},
+        {"analyze-job", required_argument, 0, 9},
+        {"json", no_argument, 0, 'j'},
         {"keep-tex", no_argument, 0, 1},
         {"tex-only", no_argument, 0, 2},
         {"cgpa-scale", required_argument, 0, 3},
@@ -81,7 +87,7 @@ int main(int argc, char **argv) {
     };
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "o:hi", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "o:hij", long_options, NULL)) != -1) {
         switch (opt) {
             case 'o':
                 output_pdf = optarg;
@@ -89,12 +95,21 @@ int main(int argc, char **argv) {
             case 'i':
                 interactive = true;
                 break;
+            case 'j':
+                output_json = true;
+                break;
             case 5:
             case 6:
                 job_source = optarg;
                 break;
             case 7:
                 resume_pdf = optarg;
+                break;
+            case 8:
+                extract_target = optarg;
+                break;
+            case 9:
+                analyze_target = optarg;
                 break;
             case 1:
                 keep_tex = true;
@@ -121,6 +136,59 @@ int main(int argc, char **argv) {
                 print_usage(argv[0]);
                 return 1;
         }
+    }
+
+    if (analyze_target) {
+        char *job_text = job_fetch_description(analyze_target);
+        if (!job_text) {
+            if (output_json) {
+                printf("{\"success\":false,\"error\":\"could not fetch job description\"}\n");
+            } else {
+                fprintf(stderr, "error: could not fetch job description from '%s'\n", analyze_target);
+            }
+            return 1;
+        }
+        Resume *dummy = resume_new();
+        JobAnalysis *analysis = job_analyze_resume(dummy, job_text, analyze_target);
+        if (output_json) {
+            resume_print_json(stdout, NULL, analysis);
+        } else {
+            job_print_report(analysis);
+        }
+        job_analysis_free(analysis);
+        resume_free(dummy);
+        free(job_text);
+        return 0;
+    }
+
+    if (extract_target) {
+        Resume *r = resume_load_from_any(extract_target);
+        if (!r) {
+            if (output_json) {
+                printf("{\"success\":false,\"error\":\"failed to parse resume from '%s'\"}\n", extract_target);
+            } else {
+                fprintf(stderr, "error: failed to parse resume from '%s'\n", extract_target);
+            }
+            return 1;
+        }
+        JobAnalysis *analysis = NULL;
+        char *job_text = NULL;
+        if (job_source) {
+            job_text = job_fetch_description(job_source);
+            if (job_text) {
+                analysis = job_analyze_resume(r, job_text, job_source);
+            }
+        }
+        if (output_json) {
+            resume_print_json(stdout, r, analysis);
+        } else {
+            if (analysis) job_print_report(analysis);
+            resume_debug_print(r);
+        }
+        if (analysis) job_analysis_free(analysis);
+        free(job_text);
+        resume_free(r);
+        return 0;
     }
 
     char *wizard_resume = NULL;
@@ -190,10 +258,14 @@ int main(int argc, char **argv) {
     }
 
     if (dump_ast) {
-        if (diag_count() > 0) {
-            diag_print_all();
+        if (output_json) {
+            resume_print_json(stdout, g_resume, NULL);
+        } else {
+            if (diag_count() > 0) {
+                diag_print_all();
+            }
+            resume_debug_print(g_resume);
         }
-        resume_debug_print(g_resume);
         int status = diag_has_errors() ? 1 : 0;
         resume_free(g_resume);
         diag_reset();
@@ -205,33 +277,49 @@ int main(int argc, char **argv) {
 
     semantic_analyze(g_resume, cgpa_scale);
 
+    JobAnalysis *analysis = NULL;
+    char *job_text = NULL;
     if (job_source) {
-        char *job_text = job_fetch_description(job_source);
+        job_text = job_fetch_description(job_source);
         if (job_text) {
-            JobAnalysis *analysis = job_analyze_resume(g_resume, job_text, job_source);
-            job_print_report(analysis);
-            job_analysis_free(analysis);
-            free(job_text);
-        } else {
+            analysis = job_analyze_resume(g_resume, job_text, job_source);
+            if (!output_json) {
+                job_print_report(analysis);
+            }
+        } else if (!output_json) {
             fprintf(stderr, "warning: could not fetch/load job description from '%s'\n", job_source);
         }
     }
 
-    if (diag_count() > 0) {
-        diag_print_all();
-    }
     if (diag_has_errors()) {
+        if (output_json) {
+            printf("{\"success\":false,\"diagnostics\":[\n");
+            for (int i = 0; i < diag_count(); i++) {
+                printf("  {\"line\": %d, \"col\": %d, \"message\": \"%s\"}%s\n",
+                       diag_get_line(i), diag_get_col(i), diag_get_message(i),
+                       (i + 1 < diag_count()) ? "," : "");
+            }
+            printf("]}\n");
+        } else if (diag_count() > 0) {
+            diag_print_all();
+        }
+        if (analysis) job_analysis_free(analysis);
+        free(job_text);
         resume_free(g_resume);
         diag_reset();
         free(default_output);
         free(wizard_resume);
         free(wizard_pdf);
         return 1;
+    } else if (diag_count() > 0 && !output_json) {
+        diag_print_all();
     }
 
     char *tex_path = replace_extension(output_pdf, ".tex");
     if (!codegen_write_tex(g_resume, tex_path)) {
         fprintf(stderr, "error: could not write '%s'\n", tex_path);
+        if (analysis) job_analysis_free(analysis);
+        free(job_text);
         resume_free(g_resume);
         free(tex_path);
         free(default_output);
@@ -239,11 +327,17 @@ int main(int argc, char **argv) {
         free(wizard_pdf);
         return 1;
     }
-    resume_free(g_resume);
-    diag_reset();
 
     if (tex_only) {
-        printf("wrote %s\n", tex_path);
+        if (output_json) {
+            printf("{\n  \"success\": true,\n  \"texPath\": \"%s\"\n}\n", tex_path);
+        } else {
+            printf("wrote %s\n", tex_path);
+        }
+        if (analysis) job_analysis_free(analysis);
+        free(job_text);
+        resume_free(g_resume);
+        diag_reset();
         free(tex_path);
         free(default_output);
         free(wizard_resume);
@@ -257,11 +351,26 @@ int main(int argc, char **argv) {
         .keep_tex = keep_tex,
     };
     bool ok = build_pdf(&build_opts);
-    free(tex_path);
 
-    if (ok) {
+    if (output_json) {
+        printf("{\n  \"success\": %s,\n  \"outputPdf\": \"%s\",\n  \"texPath\": \"%s\"",
+               ok ? "true" : "false", output_pdf, tex_path);
+        if (analysis) {
+            printf(",\n  \"matchScore\": %.1f,\n", analysis->match_percentage);
+            printf("  \"matchedCount\": %d,\n", analysis->matched_count);
+            printf("  \"missingCount\": %d,\n", analysis->missing_count);
+            printf("  \"jobSkillCount\": %d", analysis->job_skill_count);
+        }
+        printf(",\n  \"diagnostics\": []\n}\n");
+    } else if (ok) {
         printf("wrote %s\n", output_pdf);
     }
+
+    if (analysis) job_analysis_free(analysis);
+    free(job_text);
+    resume_free(g_resume);
+    diag_reset();
+    free(tex_path);
     free(default_output);
     free(wizard_resume);
     free(wizard_pdf);

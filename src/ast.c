@@ -1,4 +1,5 @@
 #include "ast.h"
+#include "job_matcher.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -218,4 +219,151 @@ void resume_debug_print(const Resume *r) {
             }
         }
     }
+}
+
+static void write_json_escaped_string(FILE *fp, const char *s) {
+    if (!s) {
+        fputs("null", fp);
+        return;
+    }
+    fputc('"', fp);
+    for (const char *p = s; *p; p++) {
+        if (*p == '"') fputs("\\\"", fp);
+        else if (*p == '\\') fputs("\\\\", fp);
+        else if (*p == '\n') fputs("\\n", fp);
+        else if (*p == '\r') fputs("\\r", fp);
+        else if (*p == '\t') fputs("\\t", fp);
+        else if ((unsigned char)*p < 32) fprintf(fp, "\\u%04x", (unsigned char)*p);
+        else fputc(*p, fp);
+    }
+    fputc('"', fp);
+}
+
+void resume_print_json(FILE *fp, const Resume *r, const struct JobAnalysis *ja) {
+    const JobAnalysis *analysis = (const JobAnalysis *)ja;
+    fputs("{\n", fp);
+    fputs("  \"resume\": {\n", fp);
+    fputs("    \"name\": ", fp); write_json_escaped_string(fp, r ? r->name : NULL); fputs(",\n", fp);
+    fputs("    \"email\": ", fp); write_json_escaped_string(fp, r ? r->email : NULL); fputs(",\n", fp);
+    fputs("    \"phone\": ", fp); write_json_escaped_string(fp, r ? r->phone : NULL); fputs(",\n", fp);
+    fputs("    \"github\": ", fp); write_json_escaped_string(fp, r ? r->github : NULL); fputs(",\n", fp);
+    fputs("    \"linkedin\": ", fp); write_json_escaped_string(fp, r ? r->linkedin : NULL); fputs(",\n", fp);
+
+    fputs("    \"education\": [\n", fp);
+    if (r) {
+        for (int i = 0; i < r->edu_count; i++) {
+            fprintf(fp, "      {\"college\": ");
+            write_json_escaped_string(fp, r->edu_entries[i].college);
+            fprintf(fp, ", \"cgpa\": %.2f}%s\n", r->edu_entries[i].cgpa, (i + 1 < r->edu_count) ? "," : "");
+        }
+    }
+    fputs("    ],\n", fp);
+
+    fputs("    \"skills\": [\n", fp);
+    if (r) {
+        for (int i = 0; i < r->skill_count; i++) {
+            fputs("      ", fp);
+            write_json_escaped_string(fp, r->skills[i].text);
+            if (i + 1 < r->skill_count) fputs(",", fp);
+            fputs("\n", fp);
+        }
+    }
+    fputs("    ],\n", fp);
+
+    fputs("    \"projects\": [\n", fp);
+    if (r) {
+        for (int i = 0; i < r->project_count; i++) {
+            fputs("      {\n", fp);
+            fputs("        \"title\": ", fp); write_json_escaped_string(fp, r->projects[i].name); fputs(",\n", fp);
+            fputs("        \"bullets\": [\n", fp);
+            for (int j = 0; j < r->projects[i].bullet_count; j++) {
+                fputs("          ", fp);
+                write_json_escaped_string(fp, r->projects[i].bullets[j]);
+                if (j + 1 < r->projects[i].bullet_count) fputs(",", fp);
+                fputs("\n", fp);
+            }
+            fputs("        ]\n", fp);
+            fprintf(fp, "      }%s\n", (i + 1 < r->project_count) ? "," : "");
+        }
+    }
+    fputs("    ],\n", fp);
+
+    fputs("    \"experience\": [\n", fp);
+    if (r) {
+        for (int i = 0; i < r->exp_count; i++) {
+            fputs("      {\n", fp);
+            fputs("        \"company\": ", fp); write_json_escaped_string(fp, r->exp_entries[i].company); fputs(",\n", fp);
+            fputs("        \"role\": ", fp); write_json_escaped_string(fp, r->exp_entries[i].role); fputs(",\n", fp);
+            fputs("        \"duration\": ", fp); write_json_escaped_string(fp, r->exp_entries[i].duration); fputs(",\n", fp);
+            fputs("        \"bullets\": [\n", fp);
+            for (int j = 0; j < r->exp_entries[i].bullet_count; j++) {
+                fputs("          ", fp);
+                write_json_escaped_string(fp, r->exp_entries[i].bullets[j]);
+                if (j + 1 < r->exp_entries[i].bullet_count) fputs(",", fp);
+                fputs("\n", fp);
+            }
+            fputs("        ]\n", fp);
+            fprintf(fp, "      }%s\n", (i + 1 < r->exp_count) ? "," : "");
+        }
+    }
+    fputs("    ],\n", fp);
+
+    fputs("    \"extras\": [\n", fp);
+    if (r) {
+        for (int i = 0; i < r->extra_count; i++) {
+            fputs("      {\n", fp);
+            fputs("        \"title\": ", fp); write_json_escaped_string(fp, r->extras[i].title); fputs(",\n", fp);
+            fputs("        \"items\": [\n", fp);
+            for (int j = 0; j < r->extras[i].item_count; j++) {
+                fputs("          {\n", fp);
+                fputs("            \"text\": ", fp); write_json_escaped_string(fp, r->extras[i].items[j].text); fputs(",\n", fp);
+                fputs("            \"subbullets\": [\n", fp);
+                for (int k = 0; k < r->extras[i].items[j].sub_count; k++) {
+                    fputs("              ", fp);
+                    write_json_escaped_string(fp, r->extras[i].items[j].subbullets[k]);
+                    if (k + 1 < r->extras[i].items[j].sub_count) fputs(",", fp);
+                    fputs("\n", fp);
+                }
+                fputs("            ]\n", fp);
+                fprintf(fp, "          }%s\n", (j + 1 < r->extras[i].item_count) ? "," : "");
+            }
+            fputs("        ]\n", fp);
+            fprintf(fp, "      }%s\n", (i + 1 < r->extra_count) ? "," : "");
+        }
+    }
+    fputs("    ]\n", fp);
+    fputs("  }", fp);
+
+    if (analysis) {
+        fputs(",\n  \"jobAnalysis\": {\n", fp);
+        fputs("    \"source\": ", fp); write_json_escaped_string(fp, analysis->source_info); fputs(",\n", fp);
+        fprintf(fp, "    \"matchPercentage\": %.1f,\n", analysis->match_percentage);
+        fprintf(fp, "    \"matchedCount\": %d,\n", analysis->matched_count);
+        fputs("    \"matchedSkills\": [\n", fp);
+        for (int i = 0; i < analysis->matched_count; i++) {
+            fputs("      ", fp); write_json_escaped_string(fp, analysis->matched_skills[i]);
+            if (i + 1 < analysis->matched_count) fputs(",", fp);
+            fputs("\n", fp);
+        }
+        fputs("    ],\n", fp);
+        fprintf(fp, "    \"missingCount\": %d,\n", analysis->missing_count);
+        fputs("    \"missingSkills\": [\n", fp);
+        for (int i = 0; i < analysis->missing_count; i++) {
+            fputs("      ", fp); write_json_escaped_string(fp, analysis->missing_skills[i]);
+            if (i + 1 < analysis->missing_count) fputs(",", fp);
+            fputs("\n", fp);
+        }
+        fputs("    ],\n", fp);
+        fprintf(fp, "    \"jobSkillCount\": %d,\n", analysis->job_skill_count);
+        fputs("    \"jobSkills\": [\n", fp);
+        for (int i = 0; i < analysis->job_skill_count; i++) {
+            fputs("      ", fp); write_json_escaped_string(fp, analysis->job_skills[i]);
+            if (i + 1 < analysis->job_skill_count) fputs(",", fp);
+            fputs("\n", fp);
+        }
+        fputs("    ]\n", fp);
+        fputs("  }", fp);
+    }
+
+    fputs("\n}\n", fp);
 }

@@ -57,6 +57,21 @@ static int compare_diags(const void *a, const void *b) {
     return da->col - db->col;
 }
 
+const char *diag_get_message(int index) {
+    if (index < 0 || index >= g_count) return NULL;
+    return g_diags[index].message;
+}
+
+int diag_get_line(int index) {
+    if (index < 0 || index >= g_count) return 0;
+    return g_diags[index].line;
+}
+
+int diag_get_col(int index) {
+    if (index < 0 || index >= g_count) return 0;
+    return g_diags[index].col;
+}
+
 void diag_print_all(void) {
     qsort(g_diags, (size_t)g_count, sizeof(Diagnostic), compare_diags);
     for (int i = 0; i < g_count; i++) {

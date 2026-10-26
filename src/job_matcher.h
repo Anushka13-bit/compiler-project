@@ -6,7 +6,7 @@
 #include "ast.h"
 
 /* Structure representing a match analysis between a Resume and a Job */
-typedef struct {
+typedef struct JobAnalysis {
     char *source_info;        /* URL, file path, or "Direct Job Input" */
     char *raw_text;           /* Clean text of the job description */
     

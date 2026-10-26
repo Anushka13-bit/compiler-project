@@ -1,6 +1,8 @@
 #ifndef AST_H
 #define AST_H
 
+#include <stdio.h>
+
 typedef struct {
     char *college;
     double cgpa;
@@ -90,5 +92,8 @@ void resume_add_extra_section(Resume *r, const char *title, int line, int col);
 void resume_add_extra_item(Resume *r, const char *text);
 void resume_add_extra_subbullet(Resume *r, const char *text);
 void resume_debug_print(const Resume *r);
+
+typedef struct JobAnalysis JobAnalysis;
+void resume_print_json(FILE *fp, const Resume *r, const JobAnalysis *ja);
 
 #endif
