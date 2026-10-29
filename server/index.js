@@ -30,6 +30,12 @@ app.use(express.json({ limit: '5mb' }));
 // Serve generated outputs (PDFs, TEX, DSL) statically
 app.use('/outputs', express.static(OUTPUTS_DIR));
 
+// Request logger — every request is printed so you can see backend activity
+app.use((req, _res, next) => {
+  console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.path}`);
+  next();
+});
+
 /**
  * Escape a string for use in the .resume DSL format.
  */
@@ -470,13 +476,15 @@ app.post('/api/analyze-job', async (req, res) => {
  * POST /api/upload-resume
  * Upload existing resume PDF or .resume DSL file and extract all data + optional job gap analysis.
  */
-app.post('/api/upload-resume', upload.single('resumeFile'), async (req, res) => {
-  if (!req.file) {
+app.post('/api/upload-resume', upload.any(), async (req, res) => {
+  // With upload.any(), files are in req.files array — find the resume file
+  const resumeFile = (req.files || []).find(f => f.fieldname === 'resumeFile') || (req.files || [])[0];
+  if (!resumeFile) {
     return res.status(400).json({ success: false, error: 'No resume file uploaded.' });
   }
 
-  const uploadedPath = req.file.path;
-  const originalName = req.file.originalname || 'uploaded_resume';
+  const uploadedPath = resumeFile.path;
+  const originalName = resumeFile.originalname || 'uploaded_resume';
   const ext = path.extname(originalName).toLowerCase();
 
   // Create appropriately named file for resumec
@@ -562,6 +570,26 @@ app.get('/api/health', (req, res) => {
     version: 'resumec 1.0 (C11/Bison/Flex/pdflatex)',
   });
 });
+
+
+// 404 catch-all for unknown /api/* routes — prevents Vite proxy ECONNREFUSED noise
+app.use('/api', (req, res) => {
+  res.status(404).json({ success: false, error: `Unknown endpoint: ${req.method} ${req.path}` });
+});
+
+// Multer error handler — catches "Unexpected field" and file-size errors
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, _next) => {
+  if (err && err.code === 'LIMIT_UNEXPECTED_FILE') {
+    return res.status(400).json({ success: false, error: `Unexpected file field: ${err.field}` });
+  }
+  if (err && err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ success: false, error: 'File too large (max 15 MB).' });
+  }
+  console.error('[server error]', err);
+  res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+});
+
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

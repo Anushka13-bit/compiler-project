@@ -1,0 +1,44 @@
+name "Anushka Gattani"
+phone "1234567890"
+email "anushka@gmail.com"
+github "Anushka13"
+linkedin "Anushka-gattani"
+
+education
+college "VIT"
+cgpa 9.20
+
+skills
+Cpp
+java
+Python
+Docker
+SQL
+R
+NLP
+"Large Language Models"
+"Apache Spark"
+Statistics
+
+projects
+project "Compiler Project"
+bullet "Automated Resume Genration"
+bullet "Entire compiler pipeline"
+bullet "Error detection and reports"
+bullet "Used SQL"
+project "Operating Systems Project"
+bullet "OS Dashboard"
+bullet "Viualisation of simulation of process"
+bullet "Multiple os algorithms executed"
+
+experience
+company "Oracle"
+role "Software Engineering Intern"
+bullet "Worked on multiple projects with my team"
+bullet "I learnt about database management from the company’s view"
+company "Publications"
+company "Crop disease detection and prediction for the market prices"
+bullet "Published in 2024."
+company "Certifications"
+company "Google Machine Learning Advanced"
+duration "June 2024- July 2024"
